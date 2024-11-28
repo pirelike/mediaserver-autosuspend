@@ -168,6 +168,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- Original script by [Your Name]
+- Original script by [Pirelike]
 - Inspired by various media server management tools
 - Thanks to the Jellyfin, Sonarr, Radarr, and Nextcloud communities
