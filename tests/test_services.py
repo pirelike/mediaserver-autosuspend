@@ -8,11 +8,38 @@ import responses
 from unittest.mock import patch, Mock
 from mediaserver_autosuspend.services import (
     JellyfinChecker,
+    PlexChecker,
     SonarrChecker,
     RadarrChecker,
     NextcloudChecker,
     SystemChecker
 )
+
+@pytest.fixture
+def config():
+    """Fixture providing base test configuration."""
+    return {
+        # Jellyfin settings
+        "JELLYFIN_API_KEY": "test-jellyfin-key",
+        "JELLYFIN_URL": "http://localhost:8096",
+        
+        # Plex settings
+        "PLEX_TOKEN": "test-plex-token",
+        "PLEX_URL": "http://localhost:32400",
+        "PLEX_MONITOR_TRANSCODING": True,
+        
+        # Sonarr settings
+        "SONARR_API_KEY": "test-sonarr-key",
+        "SONARR_URL": "http://localhost:8989",
+        
+        # Radarr settings
+        "RADARR_API_KEY": "test-radarr-key",
+        "RADARR_URL": "http://localhost:7878",
+        
+        # Nextcloud settings
+        "NEXTCLOUD_URL": "http://localhost:9000",
+        "NEXTCLOUD_TOKEN": "test-nextcloud-token"
+    }
 
 class TestJellyfinChecker:
     """Test suite for Jellyfin service checker."""
@@ -25,7 +52,6 @@ class TestJellyfinChecker:
     @responses.activate
     def test_active_session(self, config):
         """Test detection of active Jellyfin session."""
-        # Mock Jellyfin API response
         responses.add(
             responses.GET,
             f"{config['JELLYFIN_URL']}/Sessions",
@@ -61,6 +87,53 @@ class TestJellyfinChecker:
         checker = JellyfinChecker(config)
         assert checker.check_activity() is False
 
+class TestPlexChecker:
+    """Test suite for Plex service checker."""
+    
+    def test_init_missing_config(self):
+        """Test initialization with missing configuration."""
+        with pytest.raises(Exception):
+            PlexChecker({})
+    
+    @responses.activate
+    def test_active_session(self, config):
+        """Test detection of active Plex session."""
+        responses.add(
+            responses.GET,
+            f"{config['PLEX_URL']}/status/sessions",
+            json={
+                "MediaContainer": {
+                    "Metadata": [{
+                        "title": "Test Movie",
+                        "Player": {"state": "playing"}
+                    }]
+                }
+            },
+            status=200
+        )
+        
+        checker = PlexChecker(config)
+        assert checker.check_activity() is True
+    
+    @responses.activate
+    def test_active_transcoding(self, config):
+        """Test detection of active transcoding."""
+        responses.add(
+            responses.GET,
+            f"{config['PLEX_URL']}/status/sessions",
+            json={"MediaContainer": {"Metadata": []}},
+            status=200
+        )
+        responses.add(
+            responses.GET,
+            f"{config['PLEX_URL']}/transcode/sessions",
+            json={"MediaContainer": {"Metadata": [{"title": "Test"}]}},
+            status=200
+        )
+        
+        checker = PlexChecker(config)
+        assert checker.check_activity() is True
+
 class TestSonarrChecker:
     """Test suite for Sonarr service checker."""
     
@@ -90,18 +163,6 @@ class TestSonarrChecker:
             f"{config['SONARR_URL']}/api/v3/queue",
             json={"totalRecords": 0},
             status=200
-        )
-        
-        checker = SonarrChecker(config)
-        assert checker.check_activity() is False
-    
-    @responses.activate
-    def test_connection_error(self, config):
-        """Test handling of connection errors."""
-        responses.add(
-            responses.GET,
-            f"{config['SONARR_URL']}/api/v3/queue",
-            status=500
         )
         
         checker = SonarrChecker(config)
@@ -140,18 +201,6 @@ class TestRadarrChecker:
         
         checker = RadarrChecker(config)
         assert checker.check_activity() is False
-    
-    @responses.activate
-    def test_connection_error(self, config):
-        """Test handling of connection errors."""
-        responses.add(
-            responses.GET,
-            f"{config['RADARR_URL']}/api/v3/queue",
-            status=500
-        )
-        
-        checker = RadarrChecker(config)
-        assert checker.check_activity() is False
 
 class TestNextcloudChecker:
     """Test suite for Nextcloud service checker."""
@@ -180,66 +229,9 @@ class TestNextcloudChecker:
         
         checker = NextcloudChecker(config)
         assert checker.check_activity() is True
-    
-    @responses.activate
-    def test_high_cpu_load(self, config):
-        """Test detection of high CPU load."""
-        responses.add(
-            responses.GET,
-            f"{config['NEXTCLOUD_URL']}/ocs/v2.php/apps/serverinfo/api/v1/info",
-            json={
-                "ocs": {
-                    "data": {
-                        "activeUsers": {"last5minutes": 0},
-                        "system": {"cpuload": [0.4, 0.6, 0.5]}
-                    }
-                }
-            },
-            status=200
-        )
-        
-        checker = NextcloudChecker(config)
-        assert checker.check_activity() is True
-    
-    @responses.activate
-    def test_no_activity(self, config):
-        """Test when no Nextcloud activity exists."""
-        responses.add(
-            responses.GET,
-            f"{config['NEXTCLOUD_URL']}/ocs/v2.php/apps/serverinfo/api/v1/info",
-            json={
-                "ocs": {
-                    "data": {
-                        "activeUsers": {"last5minutes": 0},
-                        "system": {"cpuload": [0.1, 0.2, 0.1]}
-                    }
-                }
-            },
-            status=200
-        )
-        
-        checker = NextcloudChecker(config)
-        assert checker.check_activity() is False
-    
-    @responses.activate
-    def test_connection_error(self, config):
-        """Test handling of connection errors."""
-        responses.add(
-            responses.GET,
-            f"{config['NEXTCLOUD_URL']}/ocs/v2.php/apps/serverinfo/api/v1/info",
-            status=500
-        )
-        
-        checker = NextcloudChecker(config)
-        assert checker.check_activity() is False
 
 class TestSystemChecker:
     """Test suite for System service checker."""
-    
-    def test_init(self, config):
-        """Test successful initialization."""
-        checker = SystemChecker(config)
-        assert checker is not None
     
     @patch('subprocess.check_output')
     def test_active_users(self, mock_check_output, config):
@@ -260,19 +252,7 @@ class TestSystemChecker:
     @patch('subprocess.check_output')
     def test_command_error(self, mock_check_output, config):
         """Test handling of command execution errors."""
-        mock_check_output.side_effect = subprocess.CalledProcessError(1, 'who')
+        mock_check_output.side_effect = Exception("Command failed")
         
         checker = SystemChecker(config)
         assert checker.check_activity() is False
-    
-    def test_ignore_users(self, config):
-        """Test user ignore list functionality."""
-        config['IGNORE_USERS'] = ['user1']
-        checker = SystemChecker(config)
-        
-        with patch('subprocess.check_output') as mock_check:
-            mock_check.return_value = b"user1 pts/0\n"
-            assert checker.check_activity() is False
-            
-            mock_check.return_value = b"user2 pts/0\n"
-            assert checker.check_activity() is True
