@@ -1,27 +1,61 @@
 {
-    "JELLYFIN_API_KEY": "your-jellyfin-api-key",
-    "JELLYFIN_URL": "http://localhost:8096",
-    "RADARR_API_KEY": "your-radarr-api-key",
-    "RADARR_URL": "http://localhost:7878",
-    "SONARR_API_KEY": "your-sonarr-api-key",
-    "SONARR_URL": "http://localhost:8989",
-    "NEXTCLOUD_URL": "http://localhost:9000",
-    "NEXTCLOUD_TOKEN": "your-nextcloud-token",
-    
-    "GRACE_PERIOD": 600,
-    "CHECK_INTERVAL": 60,
-    "LOG_LEVEL": "INFO",
-    "LOG_FILE": "/var/log/mediaserver-autosuspend.log",
-    
     "SERVICES": {
-        "jellyfin": true,
+        "jellyfin": false,
+        "plex": true,
         "sonarr": true,
         "radarr": true,
         "nextcloud": true,
         "system": true
     },
+
+    "# Media Services - Enable only one": "",
+    "# Jellyfin Configuration": "",
+    "JELLYFIN_API_KEY": "your-jellyfin-api-key",
+    "JELLYFIN_URL": "http://localhost:8096",
+
+    "# Plex Configuration": "",
+    "PLEX_TOKEN": "your-plex-token",
+    "PLEX_URL": "http://localhost:32400",
+    "PLEX_MONITOR_TRANSCODING": true,
+    "PLEX_IGNORE_PAUSED": false,
     
+    "# Download Services": "",
+    "RADARR_API_KEY": "your-radarr-api-key",
+    "RADARR_URL": "http://localhost:7878",
+    "SONARR_API_KEY": "your-sonarr-api-key",
+    "SONARR_URL": "http://localhost:8989",
+    
+    "# Nextcloud Configuration": "",
+    "NEXTCLOUD_URL": "http://localhost:9000",
+    "NEXTCLOUD_TOKEN": "your-nextcloud-token",
     "NEXTCLOUD_CPU_THRESHOLD": 0.5,
+    
+    "# System Configuration": "",
+    "GRACE_PERIOD": 600,
+    "CHECK_INTERVAL": 60,
+    "MIN_UPTIME": 300,
+    "SUSPENSION_COOLDOWN": 1800,
+    
+    "# Logging Configuration": "",
+    "LOG_LEVEL": "INFO",
+    "LOG_FILE": "/var/log/mediaserver-autosuspend/service.log",
+    "MAX_LOG_SIZE": 10485760,
+    "LOG_BACKUP_COUNT": 5,
+    "LOG_JSON": false,
+    "USE_SYSLOG": false,
+    "LOG_COLORS": true,
+    
+    "# Wake-up Configuration": "",
     "WAKE_UP_TIMES": ["07:00", "13:00", "19:00"],
-    "TIMEZONE": "UTC"
+    "TIMEZONE": "UTC",
+    
+    "# System Service Configuration": "",
+    "IGNORE_USERS": ["admin", "system"],
+    "CHECK_SYSTEM_LOAD": true,
+    "SYSTEM_LOAD_THRESHOLD": 0.5,
+    
+    "# Advanced Configuration": "",
+    "AUTO_DUMP_ON_ERROR": false,
+    "DEBUG_MODE": false,
+    "HOOKS_DIR": "/etc/mediaserver-autosuspend/hooks"
 }
