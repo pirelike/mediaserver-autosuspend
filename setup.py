@@ -9,12 +9,11 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="mediaserver-autosuspend",
     version="1.0.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Pirelike",
     description="Automatic suspension tool for media servers",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/mediaserver-autosuspend",
+    url="https://github.com/pirelike/mediaserver-autosuspend",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
