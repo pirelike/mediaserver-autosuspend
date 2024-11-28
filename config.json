@@ -1,0 +1,27 @@
+{
+    "JELLYFIN_API_KEY": "your-jellyfin-api-key",
+    "JELLYFIN_URL": "http://localhost:8096",
+    "RADARR_API_KEY": "your-radarr-api-key",
+    "RADARR_URL": "http://localhost:7878",
+    "SONARR_API_KEY": "your-sonarr-api-key",
+    "SONARR_URL": "http://localhost:8989",
+    "NEXTCLOUD_URL": "http://localhost:9000",
+    "NEXTCLOUD_TOKEN": "your-nextcloud-token",
+    
+    "GRACE_PERIOD": 600,
+    "CHECK_INTERVAL": 60,
+    "LOG_LEVEL": "INFO",
+    "LOG_FILE": "/var/log/mediaserver-autosuspend.log",
+    
+    "SERVICES": {
+        "jellyfin": true,
+        "sonarr": true,
+        "radarr": true,
+        "nextcloud": true,
+        "system": true
+    },
+    
+    "NEXTCLOUD_CPU_THRESHOLD": 0.5,
+    "WAKE_UP_TIMES": ["07:00", "13:00", "19:00"],
+    "TIMEZONE": "UTC"
+}
