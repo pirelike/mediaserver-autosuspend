@@ -25,7 +25,7 @@ An intelligent system management script that automatically suspends your media s
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/pirelike/mediaserver-autosuspend
+   git clone https://github.com/pirelike/mediaserver-autosuspend.git
    cd mediaserver-autosuspend
    ```
 
