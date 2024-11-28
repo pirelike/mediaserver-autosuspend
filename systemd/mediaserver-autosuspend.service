@@ -1,6 +1,6 @@
 [Unit]
 Description=MediaServer AutoSuspend Service
-Documentation=https://github.com/yourusername/mediaserver-autosuspend
+Documentation=https://github.com/pirelike/mediaserver-autosuspend
 After=network.target jellyfin.service sonarr.service radarr.service nextcloud.service
 Wants=network.target
 
