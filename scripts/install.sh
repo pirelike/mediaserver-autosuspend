@@ -22,9 +22,9 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Determine the directory of the script
+# Get absolute path of script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -33,9 +33,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Check Python version
-PYTHON_VERSION=$(python3 -c 'import sys; print(sys.version_info[0]*10 + sys.version_info[1])')
-if [ "$PYTHON_VERSION" -lt 36 ]; then
-    log_error "Python 3.6 or higher is required (found $(python3 --version))"
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+if [ "$(echo "$PYTHON_VERSION < 3.7" | bc)" -eq 1 ]; then
+    log_error "Python 3.7 or higher is required (found Python $PYTHON_VERSION)"
     exit 1
 fi
 
@@ -76,35 +76,36 @@ source "$VENV_DIR/bin/activate"
 
 # Install Python dependencies
 log_info "Installing Python dependencies..."
-pip install -r "$PROJECT_DIR/requirements.txt"
+pip install --upgrade pip
+pip install wheel
+pip install -r "$PROJECT_ROOT/requirements.txt"
 
-# Deactivate virtual environment
-deactivate
+# Install the package in development mode
+log_info "Installing mediaserver-autosuspend package..."
+pip install -e "$PROJECT_ROOT"
 
-# Copy files
-log_info "Copying files..."
-cp -r "$PROJECT_DIR/mediaserver_autosuspend" "$INSTALL_DIR/"
-cp "$PROJECT_DIR/config.example.json" "$CONFIG_DIR/"
-cp "$PROJECT_DIR/scripts/set-wakeup.sh" "$INSTALL_DIR/"
-
-# Create config if it doesn't exist
+# Copy configuration files
+log_info "Copying configuration files..."
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
-    log_info "Creating initial configuration..."
-    cp "$CONFIG_DIR/config.example.json" "$CONFIG_DIR/config.json"
+    cp "$PROJECT_ROOT/config.example.json" "$CONFIG_DIR/config.json"
+    log_info "Created initial configuration file"
 else
     log_info "Configuration file already exists, skipping..."
 fi
 
-# Install wake-up script
-log_info "Installing wake-up script..."
+# Copy files
+log_info "Copying files..."
+cp -r "$PROJECT_ROOT/mediaserver_autosuspend" "$INSTALL_DIR/"
+cp "$PROJECT_ROOT/scripts/set-wakeup.sh" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/set-wakeup.sh"
 
 # Install systemd service
 log_info "Installing systemd service..."
-cp "$PROJECT_DIR/systemd/mediaserver-autosuspend.service" "$SYSTEMD_DIR/"
+cp "$PROJECT_ROOT/systemd/mediaserver-autosuspend.service" "$SYSTEMD_DIR/"
 
-# Modify systemd service file to use the virtual environment
-sed -i "s|ExecStart=/usr/bin/python3|ExecStart=$VENV_DIR/bin/python|" "$SYSTEMD_DIR/mediaserver-autosuspend.service"
+# Update systemd service file to use virtual environment
+sed -i "s|ExecStart=.*|ExecStart=$VENV_DIR/bin/python -m mediaserver_autosuspend.main|" \
+    "$SYSTEMD_DIR/mediaserver-autosuspend.service"
 
 # Set permissions
 log_info "Setting permissions..."
@@ -115,20 +116,6 @@ chmod 755 "$CONFIG_DIR"
 chmod 644 "$CONFIG_DIR/config.json"
 chown -R root:root "$LOG_DIR"
 chmod 755 "$LOG_DIR"
-
-# Enable and start service
-log_info "Enabling and starting service..."
-systemctl daemon-reload
-systemctl enable mediaserver-autosuspend
-systemctl start mediaserver-autosuspend
-
-# Check service status
-if systemctl is-active --quiet mediaserver-autosuspend; then
-    log_info "Service started successfully!"
-else
-    log_error "Service failed to start. Check logs with: journalctl -u mediaserver-autosuspend"
-    exit 1
-fi
 
 # Create uninstall script
 log_info "Creating uninstall script..."
@@ -149,23 +136,36 @@ EOL
 
 chmod +x "$INSTALL_DIR/uninstall.sh"
 
-# Final status and instructions
+# Enable and start service
+log_info "Enabling and starting service..."
+systemctl daemon-reload
+systemctl enable mediaserver-autosuspend
+systemctl start mediaserver-autosuspend
+
+# Check service status
+if systemctl is-active --quiet mediaserver-autosuspend; then
+    log_info "Service started successfully!"
+else
+    log_error "Service failed to start. Check logs with: journalctl -u mediaserver-autosuspend"
+    exit 1
+fi
+
+# Configuration reminder
+log_warn "Remember to update your configuration in $CONFIG_DIR/config.json"
+log_warn "At minimum, you need to:"
+log_warn "1. Enable either Jellyfin or Plex in the SERVICES section"
+log_warn "2. Set the appropriate API key/token"
+log_warn "3. Verify the service URLs"
+
 log_info "Installation completed successfully!"
-log_info "Please edit $CONFIG_DIR/config.json to configure your services"
 log_info "You can monitor the service with: journalctl -u mediaserver-autosuspend -f"
 log_info "To uninstall, run: $INSTALL_DIR/uninstall.sh"
 
-# Configuration reminder
-if [ -f "$CONFIG_DIR/config.json" ]; then
-    log_warn "Remember to update your configuration in $CONFIG_DIR/config.json"
-    log_warn "At minimum, you need to:"
-    log_warn "1. Enable either Jellyfin or Plex in the SERVICES section"
-    log_warn "2. Set the appropriate API key/token"
-    log_warn "3. Verify the service URLs"
-fi
-
 # Check if running in a virtual environment
 if [ -n "$VIRTUAL_ENV" ]; then
-    log_warn "Installation was performed within a virtual environment ($VIRTUAL_ENV)"
-    log_warn "Make sure required packages are also available system-wide"
+    log_warn "You are currently in a Python virtual environment ($VIRTUAL_ENV)"
+    log_warn "The service will use its own virtual environment at $VENV_DIR"
 fi
+
+# Deactivate virtual environment
+deactivate
