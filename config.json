@@ -1,0 +1,96 @@
+{
+  "//": "Media Server Configuration",
+  "SERVICES": {
+    "jellyfin": true,
+    "plex": false,
+    "sonarr": true,
+    "radarr": true,
+    "nextcloud": true,
+    "system": true
+  },
+
+  "//": "Jellyfin Configuration",
+  "JELLYFIN": {
+    "API_KEY": "your-jellyfin-api-key",
+    "URL": "http://localhost:8096",
+    "TIMEOUT": 10
+  },
+
+  "//": "Plex Configuration",
+  "PLEX": {
+    "TOKEN": "your-plex-token",
+    "URL": "http://localhost:32400",
+    "MONITOR_TRANSCODING": true,
+    "IGNORE_PAUSED": false,
+    "TIMEOUT": 10
+  },
+
+  "//": "Download Manager Configuration",
+  "SONARR": {
+    "API_KEY": "your-sonarr-api-key",
+    "URL": "http://localhost:8989",
+    "TIMEOUT": 10
+  },
+
+  "RADARR": {
+    "API_KEY": "your-radarr-api-key",
+    "URL": "http://localhost:7878",
+    "TIMEOUT": 10
+  },
+
+  "//": "Nextcloud Configuration",
+  "NEXTCLOUD": {
+    "URL": "http://localhost:9000",
+    "TOKEN": "your-nextcloud-token",
+    "CPU_THRESHOLD": 0.5,
+    "TIMEOUT": 10
+  },
+
+  "//": "System Monitoring Configuration",
+  "SYSTEM": {
+    "IGNORE_USERS": [],
+    "LOAD_THRESHOLD": 0.5,
+    "CHECK_LOAD": true
+  },
+
+  "//": "Suspension Timing Configuration",
+  "TIMING": {
+    "GRACE_PERIOD": 600,
+    "CHECK_INTERVAL": 60,
+    "MIN_UPTIME": 300,
+    "SUSPENSION_COOLDOWN": 1800,
+    "MIN_CHECK_INTERVAL": 1
+  },
+
+  "//": "Wake-up Schedule Configuration",
+  "SCHEDULE": {
+    "WAKE_UP_TIMES": [
+      "07:00",
+      "13:00",
+      "19:00"
+    ],
+    "TIMEZONE": "UTC"
+  },
+
+  "//": "Hooks Configuration",
+  "HOOKS": {
+    "DIR": "/etc/mediaserver-autosuspend/hooks"
+  },
+
+  "//": "Logging Configuration",
+  "LOGGING": {
+    "LEVEL": "INFO",
+    "FILE": "/var/log/mediaserver-autosuspend/mediaserver-autosuspend.log",
+    "MAX_SIZE": 10485760,
+    "BACKUP_COUNT": 5,
+    "JSON": false,
+    "USE_SYSLOG": false,
+    "COLORS": true
+  },
+
+  "//": "Debug Configuration",
+  "DEBUG": {
+    "MODE": false,
+    "AUTO_DUMP_ON_ERROR": false
+  }
+}
