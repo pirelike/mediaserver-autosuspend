@@ -1,52 +1,35 @@
 [Unit]
-Description=MediaServer AutoSuspend Service
+Description=MediaServer AutoSuspend - Automatic server power management
 Documentation=https://github.com/pirelike/mediaserver-autosuspend
-After=network.target jellyfin.service sonarr.service radarr.service nextcloud.service
-Wants=network.target
+After=network.target network-online.target
+Wants=network-online.target
+# Add dependencies for monitored services
+After=jellyfin.service plex.service sonarr.service radarr.service nextcloud.service
 
 [Service]
 Type=simple
 User=root
 Group=root
-ExecStart=/usr/bin/python3 -m mediaserver_autosuspend
+# Use the virtual environment Python
+ExecStart=/opt/mediaserver-autosuspend/venv/bin/python -m mediaserver_autosuspend.main
 WorkingDirectory=/opt/mediaserver-autosuspend
-Environment=PYTHONPATH=/opt/mediaserver-autosuspend
 Environment=PYTHONUNBUFFERED=1
 
-# Runtime directory and permissions
-RuntimeDirectory=mediaserver-autosuspend
-RuntimeDirectoryMode=0755
+# Configuration paths
+Environment=CONFIG_PATH=/etc/mediaserver-autosuspend/config.json
+Environment=LOG_PATH=/var/log/mediaserver-autosuspend
 
-# Configuration
-EnvironmentFile=-/etc/mediaserver-autosuspend/env
-ConfigurationDirectory=mediaserver-autosuspend
-ConfigurationDirectoryMode=0755
-
-# Logging
-StandardOutput=append:/var/log/mediaserver-autosuspend/service.log
-StandardError=append:/var/log/mediaserver-autosuspend/service.log
-
-# Restart configuration
-Restart=always
-RestartSec=60
+# Runtime management
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=300
 
 # Security settings
-NoNewPrivileges=no
+CapabilityBoundingSet=CAP_SYS_BOOT CAP_SYS_ADMIN CAP_DAC_READ_SEARCH
 ProtectSystem=full
-ProtectHome=read-only
+ReadWritePaths=/var/log/mediaserver-autosuspend /etc/mediaserver-autosuspend
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectControlGroups=true
-RestrictNamespaces=true
-
-# Resource limits
-CPUQuota=25%
-MemoryLimit=128M
-TasksMax=100
-
-# Capabilities
-CapabilityBoundingSet=CAP_WAKE_ALARM CAP_SYS_BOOT
-AmbientCapabilities=CAP_WAKE_ALARM CAP_SYS_BOOT
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
