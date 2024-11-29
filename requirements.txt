@@ -1,7 +1,37 @@
-requests>=2.28.0
-python-logging>=0.4.9
-pytest>=7.0.0
-pytest-cov>=4.0.0
-responses>=0.23.0
-python-dotenv>=1.0.0
-psutil>=5.9.0
+# Core dependencies
+requests>=2.28.0      # HTTP client for API interactions
+python-dotenv>=1.0.0  # Environment variable management
+psutil>=5.9.0         # System and process utilities
+
+# Logging
+python-json-logger>=2.0.7  # JSON-formatted logging support
+colorama>=0.4.6           # Colored terminal output
+
+# Testing dependencies
+pytest>=7.0.0             # Testing framework
+pytest-cov>=4.0.0         # Test coverage reporting
+pytest-mock>=3.10.0       # Mocking support for pytest
+responses>=0.23.0         # HTTP request mocking
+pytest-asyncio>=0.21.0    # Async test support
+pytest-timeout>=2.1.0     # Test timeout support
+
+# Development dependencies
+black>=23.0.0             # Code formatting
+isort>=5.12.0            # Import sorting
+flake8>=6.0.0            # Code linting
+mypy>=1.0.0              # Static type checking
+pylint>=2.17.0           # Code analysis
+
+# Documentation
+sphinx>=7.0.0            # Documentation generator
+sphinx-rtd-theme>=1.2.0  # Documentation theme
+sphinx-autodoc-typehints>=1.23.0  # Type hint support in docs
+
+# System integration
+systemd-python>=235      # Systemd integration (optional)
+python-daemon>=3.0.1     # Daemon process support
+
+# Packaging
+wheel>=0.40.0            # Built package format
+setuptools>=68.0.0       # Package installation tools
+twine>=4.0.0             # Package publishing tool
