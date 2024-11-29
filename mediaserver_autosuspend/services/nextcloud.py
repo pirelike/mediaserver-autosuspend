@@ -1,24 +1,55 @@
 """
 Nextcloud service checker for MediaServer AutoSuspend.
 
-This module implements the service checker for Nextcloud,
-monitoring active users and CPU load.
+This module implements the service checker for Nextcloud, monitoring the 5-minute
+CPU load average through the system info API.
+
+Example:
+    >>> checker = NextcloudChecker({
+    ...     'NEXTCLOUD_URL': 'http://nextcloud.local',
+    ...     'NEXTCLOUD_TOKEN': 'your-token',
+    ...     'NEXTCLOUD_CPU_THRESHOLD': 0.5
+    ... })
+    >>> is_active = checker.check_activity()
 """
 
+import logging
+from typing import Dict, Any, Tuple, Optional
 import requests
-from typing import Dict, Any, Tuple
-from mediaserver_autosuspend.services.base import ServiceChecker, ServiceConfigError
+from urllib.parse import urljoin
+
+from mediaserver_autosuspend.services.base import (
+    ServiceChecker,
+    ServiceConfigError,
+    ServiceConnectionError,
+    ServiceCheckError
+)
 
 class NextcloudChecker(ServiceChecker):
-    """Service checker for Nextcloud server activity."""
+    """
+    Service checker for Nextcloud server activity.
+    
+    Monitors the 5-minute CPU load average through Nextcloud's system info API.
+    Activity is determined by comparing the load against a configurable threshold.
+    
+    Attributes:
+        url (str): Base URL of the Nextcloud instance
+        token (str): API token for authentication
+        cpu_threshold (float): CPU load threshold to consider as activity
+        request_timeout (int): Timeout for API requests in seconds
+    """
     
     def __init__(self, config: Dict[str, Any]):
         """
-        Initialize Nextcloud checker.
+        Initialize Nextcloud checker with configuration.
         
         Args:
-            config: Configuration dictionary containing NEXTCLOUD_URL and NEXTCLOUD_TOKEN
-            
+            config: Configuration dictionary containing:
+                - NEXTCLOUD_URL: Base URL of Nextcloud instance
+                - NEXTCLOUD_TOKEN: API token for authentication
+                - NEXTCLOUD_CPU_THRESHOLD (optional): CPU threshold (0.0-1.0)
+                - NEXTCLOUD_TIMEOUT (optional): API timeout in seconds
+                
         Raises:
             ServiceConfigError: If required configuration is missing
         """
@@ -28,83 +59,120 @@ class NextcloudChecker(ServiceChecker):
         required_keys = ['NEXTCLOUD_URL', 'NEXTCLOUD_TOKEN']
         self.validate_config(required_keys)
         
-        self.url = config['NEXTCLOUD_URL']
+        # Initialize configuration
+        self.url = config['NEXTCLOUD_URL'].rstrip('/')
         self.token = config['NEXTCLOUD_TOKEN']
-        self.cpu_threshold = config.get('NEXTCLOUD_CPU_THRESHOLD', 0.5)
+        self.cpu_threshold = float(config.get('NEXTCLOUD_CPU_THRESHOLD', 0.5))
+        self.request_timeout = int(config.get('NEXTCLOUD_TIMEOUT', 10))
+        
+        # Validate CPU threshold
+        if not 0.0 <= self.cpu_threshold <= 1.0:
+            raise ServiceConfigError(
+                "NEXTCLOUD_CPU_THRESHOLD must be between 0.0 and 1.0"
+            )
+        
+        self.logger.debug(
+            f"Initialized Nextcloud checker for {self.url} "
+            f"(CPU threshold: {self.cpu_threshold})"
+        )
     
     def check_activity(self) -> bool:
         """
-        Check Nextcloud for active users and CPU load.
+        Check Nextcloud 5-minute CPU load average.
         
         Returns:
-            bool: True if there is activity or high CPU load, False otherwise
+            bool: True if 5-minute CPU load is above threshold
+            
+        Raises:
+            ServiceConnectionError: If connection to Nextcloud fails
+            ServiceCheckError: If API request fails or returns invalid data
         """
         try:
-            headers = {
-                'NC-Token': self.token,
-                'OCS-APIRequest': 'true'
-            }
+            # Get 5-minute CPU load from system info
+            load_5min = self._get_5min_load()
             
+            # Check if CPU load indicates activity
+            if load_5min > self.cpu_threshold:
+                self.logger.info(
+                    f"High Nextcloud 5-minute load detected: {load_5min:.2f} "
+                    f"(threshold: {self.cpu_threshold})"
+                )
+                return True
+            
+            self.logger.debug(f"Nextcloud 5-minute load normal: {load_5min:.2f}")
+            return False
+            
+        except requests.exceptions.RequestException as e:
+            raise ServiceConnectionError(f"Failed to connect to Nextcloud: {e}")
+        except Exception as e:
+            raise ServiceCheckError(f"Error checking Nextcloud activity: {e}")
+    
+    def _get_5min_load(self) -> float:
+        """
+        Get 5-minute CPU load average from Nextcloud API.
+        
+        Returns:
+            5-minute CPU load average (0.0-1.0)
+            
+        Raises:
+            ServiceConnectionError: If API request fails
+            ServiceCheckError: If response data is invalid
+        """
+        headers = {
+            'NC-Token': self.token,
+            'OCS-APIRequest': 'true',
+            'Accept': 'application/json'
+        }
+        
+        api_url = urljoin(self.url, '/ocs/v2.php/apps/serverinfo/api/v1/info')
+        
+        try:
             response = requests.get(
-                f"{self.url}/ocs/v2.php/apps/serverinfo/api/v1/info",
+                api_url,
                 headers=headers,
                 params={'format': 'json'},
-                timeout=10
+                timeout=self.request_timeout
             )
             response.raise_for_status()
+            
             data = response.json()
+            if not isinstance(data, dict):
+                raise ServiceCheckError("Invalid response format from Nextcloud API")
             
-            # Extract metrics
-            active_users, cpu_load = self._extract_metrics(data)
-            
-            # Check CPU load
-            if cpu_load > self.cpu_threshold:
-                self.logger.info(
-                    f"Nextcloud: High CPU load detected (Load average: {cpu_load})"
+            # Extract 5-minute load average
+            try:
+                load_5min = float(
+                    data.get('ocs', {})
+                    .get('data', {})
+                    .get('system', {})
+                    .get('cpuload', [0.0, 0.0, 0.0])[1]  # Index 1 is 5-minute average
                 )
-                return True
+                # Normalize to 0-1 scale if needed
+                return load_5min / 100.0 if load_5min > 1.0 else load_5min
+                
+            except (IndexError, TypeError, ValueError) as e:
+                raise ServiceCheckError(f"Invalid CPU load data format: {e}")
             
-            # Check active users
-            if active_users > 0:
-                self.logger.info(
-                    f"Nextcloud: Active users in last 5 minutes: {active_users}"
-                )
-                return True
-            
-            self.logger.info(
-                f"Nextcloud: No activity detected "
-                f"(Load average: {cpu_load}, Active users: {active_users})"
-            )
-            return False
-            
+        except requests.exceptions.RequestException as e:
+            raise ServiceConnectionError(f"Nextcloud API request failed: {e}")
         except Exception as e:
-            self.logger.info(f"Nextcloud: Error connecting to API - {str(e)}")
-            return False
+            raise ServiceCheckError(f"Error parsing Nextcloud CPU load data: {e}")
     
-    def _extract_metrics(self, data: Dict[str, Any]) -> Tuple[int, float]:
+    def test_connection(self) -> Tuple[bool, Optional[str]]:
         """
-        Extract active users and CPU load from API response.
+        Test connection to Nextcloud server.
         
-        Args:
-            data: API response data
-            
         Returns:
-            Tuple containing active users count and CPU load average
+            Tuple containing:
+                - Boolean indicating if connection was successful
+                - Optional error message if connection failed
         """
-        # Get active users in last 5 minutes
-        active_users = int(
-            data.get('ocs', {})
-            .get('data', {})
-            .get('activeUsers', {})
-            .get('last5minutes', 0)
-        )
-        
-        # Get 5-minute CPU load average
-        cpu_load = float(
-            data.get('ocs', {})
-            .get('data', {})
-            .get('system', {})
-            .get('cpuload', [0, 0, 0])[1]  # Use 5-minute average
-        )
-        
-        return active_users, cpu_load
+        try:
+            self._get_5min_load()
+            return True, None
+        except ServiceConnectionError as e:
+            return False, f"Connection failed: {str(e)}"
+        except ServiceCheckError as e:
+            return False, f"API error: {str(e)}"
+        except Exception as e:
+            return False, f"Unexpected error: {str(e)}"
