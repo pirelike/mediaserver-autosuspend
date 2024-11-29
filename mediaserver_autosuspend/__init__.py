@@ -9,6 +9,7 @@ from pathlib import Path
 import json
 import logging
 from typing import Dict, Any
+from .version import __version__
 
 # Core components
 from mediaserver_autosuspend.suspension_manager import SuspensionManager
