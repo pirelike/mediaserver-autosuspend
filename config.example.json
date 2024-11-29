@@ -28,31 +28,31 @@
     "13:00",       // Example: 1 PM
     "19:00"        // Example: 7 PM
   ],
-  "TIMEZONE": "UTC",    // Timezone for wake-up times (e.g., "America/New_York") --CHANGED--
+  "TIMEZONE": "UTC",    // Timezone for wake-up times (e.g., "America/New_York") 
 
   "SERVICES": {
     "jellyfin": true,  // Enable/disable checking Jellyfin
-    "plex": false,     // Enable/disable checking Plex  --CHANGED--
+    "plex": false,     // Enable/disable checking Plex  
     "sonarr": true,   // Enable/disable checking Sonarr
     "radarr": true,   // Enable/disable checking Radarr
     "nextcloud": true, // Enable/disable checking Nextcloud
-    "system": true      // Enable/disable checking for logged-in users --CHANGED--
+    "system": true      // Enable/disable checking for logged-in users 
   },
 
   "IGNORE_USERS": [],  // List of users to ignore when checking logged-in users
   "SYSTEM_LOAD_THRESHOLD": 0.5, // System load threshold to consider as activity (float, 0.0 - 1.0)
   "CHECK_SYSTEM_LOAD": true, // Enable/disable checking system load as activity
 
-  "HOOKS_DIR": "/etc/mediaserver-autosuspend/hooks", // Directory containing pre/post-suspend hooks  --CHANGED--
+  "HOOKS_DIR": "/etc/mediaserver-autosuspend/hooks", // Directory containing pre/post-suspend hooks  
 
   "LOG_LEVEL": "INFO", // Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
   "LOG_FILE": "/var/log/mediaserver-autosuspend/mediaserver-autosuspend.log", // Path to log file
   "MAX_LOG_SIZE": 10485760,    // Maximum log file size in bytes (10MB)
   "LOG_BACKUP_COUNT": 5,      // Number of log backups to keep
-  "LOG_JSON": false,         // Use JSON log format  --CHANGED--
-  "USE_SYSLOG": false,       // Log to syslog  --CHANGED--
-  "LOG_COLORS": true,         // Use colored logs (for console output) --CHANGED--
-  "MIN_CHECK_INTERVAL": 1,  // Minimum time in seconds between checks for a single service --CHANGED--
+  "LOG_JSON": false,         // Use JSON log format  
+  "USE_SYSLOG": false,       // Log to syslog  
+  "LOG_COLORS": true,         // Use colored logs (for console output) 
+  "MIN_CHECK_INTERVAL": 1,  // Minimum time in seconds between checks for a single service 
   "AUTO_DUMP_ON_ERROR": false,   // Automatically dump system state on errors
-  "DEBUG_MODE": false          // Enable more verbose debugging logs (if needed) --CHANGED--
+  "DEBUG_MODE": false          // Enable more verbose debugging logs (if needed) 
 }
