@@ -1,22 +1,42 @@
 """
-MediaServer AutoSuspend Services Package.
+MediaServer AutoSuspend Services Package
+--------------------------------------
 
-This package provides service checkers for various media server components.
-Each service checker implements the base ServiceChecker interface and
-provides specific functionality for checking service activity.
+This package provides service checkers for various media server and related services.
+It includes a plugin system for easy addition of new service checkers.
+
+Available service checkers:
+- JellyfinChecker: Monitors Jellyfin media server activity
+- PlexChecker: Monitors Plex media server activity
+- SonarrChecker: Monitors Sonarr download queue
+- RadarrChecker: Monitors Radarr download queue
+- NextcloudChecker: Monitors Nextcloud activity
+- SystemChecker: Monitors system-level activity
 """
 
-from mediaserver_autosuspend.services.base import ServiceChecker
+import logging
+from typing import Dict, Any, Type, Optional
+
+# Import base service checker
+from mediaserver_autosuspend.services.base import (
+    ServiceChecker,
+    ServiceCheckError,
+    ServiceConfigError,
+    ServiceConnectionError
+)
+
+# Import individual service checkers
 from mediaserver_autosuspend.services.jellyfin import JellyfinChecker
 from mediaserver_autosuspend.services.plex import PlexChecker
 from mediaserver_autosuspend.services.sonarr import SonarrChecker
 from mediaserver_autosuspend.services.radarr import RadarrChecker
 from mediaserver_autosuspend.services.nextcloud import NextcloudChecker
 from mediaserver_autosuspend.services.system import SystemChecker
-from typing import Dict, Type, Any
+
+logger = logging.getLogger(__name__)
 
 # Registry of available service checkers
-SERVICE_REGISTRY: Dict[str, Type[ServiceChecker]] = {
+SERVICE_CHECKERS: Dict[str, Type[ServiceChecker]] = {
     'jellyfin': JellyfinChecker,
     'plex': PlexChecker,
     'sonarr': SonarrChecker,
@@ -25,31 +45,50 @@ SERVICE_REGISTRY: Dict[str, Type[ServiceChecker]] = {
     'system': SystemChecker
 }
 
-# Service type categories
-MEDIA_SERVICES = ['jellyfin', 'plex']
-DOWNLOAD_SERVICES = ['sonarr', 'radarr']
-SYSTEM_SERVICES = ['nextcloud', 'system']
-
-def get_service_checker(service_name: str) -> Type[ServiceChecker]:
+def register_service_checker(name: str, checker_class: Type[ServiceChecker]) -> None:
     """
-    Get service checker class by name.
+    Register a new service checker.
     
     Args:
-        service_name: Name of the service checker to retrieve
-        
-    Returns:
-        ServiceChecker class for the requested service
+        name: Service identifier
+        checker_class: ServiceChecker subclass to register
         
     Raises:
-        KeyError: If service checker is not found
+        ValueError: If checker_class is not a ServiceChecker subclass
     """
-    if service_name not in SERVICE_REGISTRY:
-        raise KeyError(f"Service checker not found: {service_name}")
-    return SERVICE_REGISTRY[service_name]
+    if not issubclass(checker_class, ServiceChecker):
+        raise ValueError("Checker class must inherit from ServiceChecker")
+        
+    SERVICE_CHECKERS[name] = checker_class
+    logger.debug(f"Registered service checker: {name}")
+
+def get_service_checker(name: str) -> Optional[Type[ServiceChecker]]:
+    """
+    Get a service checker class by name.
+    
+    Args:
+        name: Service identifier
+        
+    Returns:
+        ServiceChecker subclass if found, None otherwise
+    """
+    return SERVICE_CHECKERS.get(name)
+
+def list_available_services() -> Dict[str, str]:
+    """
+    Get list of available service checkers.
+    
+    Returns:
+        Dict mapping service names to their descriptions
+    """
+    return {
+        name: checker.__doc__ or "No description available"
+        for name, checker in SERVICE_CHECKERS.items()
+    }
 
 def create_service_checkers(config: Dict[str, Any]) -> Dict[str, ServiceChecker]:
     """
-    Create instances of all enabled service checkers.
+    Create service checker instances based on configuration.
     
     Args:
         config: Configuration dictionary
@@ -57,112 +96,54 @@ def create_service_checkers(config: Dict[str, Any]) -> Dict[str, ServiceChecker]
     Returns:
         Dict mapping service names to checker instances
         
-    Note:
-        For media services (Jellyfin/Plex), only one should be enabled at a time
+    Raises:
+        ServiceConfigError: If service configuration is invalid
     """
     enabled_services = config.get('SERVICES', {})
     checkers = {}
     
-    # Ensure only one media service is enabled
-    active_media_services = [
-        service for service in MEDIA_SERVICES
-        if enabled_services.get(service, False)
-    ]
-    if len(active_media_services) > 1:
-        raise ValueError(
-            "Only one media service (Jellyfin or Plex) should be enabled at a time"
-        )
-    
-    # Create enabled service checkers
-    for service_name, checker_class in SERVICE_REGISTRY.items():
-        # Skip if service is explicitly disabled
-        if not enabled_services.get(service_name, True):
+    for service_name, enabled in enabled_services.items():
+        if not enabled:
             continue
             
-        # Skip if required configuration is missing
+        checker_class = get_service_checker(service_name)
+        if not checker_class:
+            logger.warning(f"Unknown service: {service_name}")
+            continue
+            
         try:
-            checkers[service_name] = checker_class(config)
+            checker = checker_class(config)
+            checkers[service_name] = checker
+            logger.info(f"Initialized {service_name} checker")
         except Exception as e:
-            # Log warning but continue with other services
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Could not initialize {service_name} checker: {str(e)}"
-            )
+            logger.error(f"Failed to initialize {service_name} checker: {e}")
+            if config.get('DEBUG_MODE'):
+                raise
     
     return checkers
 
-def register_service_checker(name: str, checker_class: Type[ServiceChecker]) -> None:
-    """
-    Register a new service checker.
-    
-    Args:
-        name: Name for the service checker
-        checker_class: ServiceChecker class to register
-        
-    Raises:
-        ValueError: If name is already registered
-        TypeError: If checker_class is not a ServiceChecker subclass
-    """
-    if name in SERVICE_REGISTRY:
-        raise ValueError(f"Service checker already registered: {name}")
-        
-    if not issubclass(checker_class, ServiceChecker):
-        raise TypeError("Checker class must inherit from ServiceChecker")
-        
-    SERVICE_REGISTRY[name] = checker_class
-
-def get_service_category(service_name: str) -> str:
-    """
-    Get the category of a service.
-    
-    Args:
-        service_name: Name of the service
-        
-    Returns:
-        Category name ('media', 'download', or 'system')
-    """
-    if service_name in MEDIA_SERVICES:
-        return 'media'
-    elif service_name in DOWNLOAD_SERVICES:
-        return 'download'
-    elif service_name in SYSTEM_SERVICES:
-        return 'system'
-    else:
-        return 'unknown'
-
-def list_available_services() -> Dict[str, Dict[str, str]]:
-    """
-    Get list of available service checkers and their information.
-    
-    Returns:
-        Dict mapping service names to their information including:
-        - description: Service description
-        - category: Service category
-    """
-    return {
-        name: {
-            'description': checker.__doc__ or "No description available",
-            'category': get_service_category(name)
-        }
-        for name, checker in SERVICE_REGISTRY.items()
-    }
-
+# Package exports
 __all__ = [
+    # Base classes and exceptions
     'ServiceChecker',
+    'ServiceCheckError',
+    'ServiceConfigError',
+    'ServiceConnectionError',
+    
+    # Service checkers
     'JellyfinChecker',
     'PlexChecker',
     'SonarrChecker',
     'RadarrChecker',
     'NextcloudChecker',
     'SystemChecker',
-    'get_service_checker',
+    
+    # Service management functions
     'create_service_checkers',
     'register_service_checker',
+    'get_service_checker',
     'list_available_services',
-    'get_service_category',
-    'SERVICE_REGISTRY',
-    'MEDIA_SERVICES',
-    'DOWNLOAD_SERVICES',
-    'SYSTEM_SERVICES'
+    
+    # Service registry
+    'SERVICE_CHECKERS'
 ]
