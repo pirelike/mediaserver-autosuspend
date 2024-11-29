@@ -1,61 +1,58 @@
 {
-    "SERVICES": {
-        "jellyfin": false,
-        "plex": true,
-        "sonarr": true,
-        "radarr": true,
-        "nextcloud": true,
-        "system": true
-    },
+  "JELLYFIN_API_KEY": "your-jellyfin-api-key",  // Replace with your actual API key
+  "JELLYFIN_URL": "http://your-jellyfin-server:8096", // Replace with your Jellyfin server URL
 
-    "# Media Services - Enable only one": "",
-    "# Jellyfin Configuration": "",
-    "JELLYFIN_API_KEY": "your-jellyfin-api-key",
-    "JELLYFIN_URL": "http://localhost:8096",
+  "PLEX_TOKEN": "your-plex-token",  // Replace with your actual Plex token
+  "PLEX_URL": "http://your-plex-server:32400", // Replace with your Plex server URL
+  "PLEX_MONITOR_TRANSCODING": true,  // Whether to monitor transcoding sessions
+  "PLEX_IGNORE_PAUSED": false, // Whether to ignore paused sessions
 
-    "# Plex Configuration": "",
-    "PLEX_TOKEN": "your-plex-token",
-    "PLEX_URL": "http://localhost:32400",
-    "PLEX_MONITOR_TRANSCODING": true,
-    "PLEX_IGNORE_PAUSED": false,
-    
-    "# Download Services": "",
-    "RADARR_API_KEY": "your-radarr-api-key",
-    "RADARR_URL": "http://localhost:7878",
-    "SONARR_API_KEY": "your-sonarr-api-key",
-    "SONARR_URL": "http://localhost:8989",
-    
-    "# Nextcloud Configuration": "",
-    "NEXTCLOUD_URL": "http://localhost:9000",
-    "NEXTCLOUD_TOKEN": "your-nextcloud-token",
-    "NEXTCLOUD_CPU_THRESHOLD": 0.5,
-    
-    "# System Configuration": "",
-    "GRACE_PERIOD": 600,
-    "CHECK_INTERVAL": 60,
-    "MIN_UPTIME": 300,
-    "SUSPENSION_COOLDOWN": 1800,
-    
-    "# Logging Configuration": "",
-    "LOG_LEVEL": "INFO",
-    "LOG_FILE": "/var/log/mediaserver-autosuspend/service.log",
-    "MAX_LOG_SIZE": 10485760,
-    "LOG_BACKUP_COUNT": 5,
-    "LOG_JSON": false,
-    "USE_SYSLOG": false,
-    "LOG_COLORS": true,
-    
-    "# Wake-up Configuration": "",
-    "WAKE_UP_TIMES": ["07:00", "13:00", "19:00"],
-    "TIMEZONE": "UTC",
-    
-    "# System Service Configuration": "",
-    "IGNORE_USERS": ["admin", "system"],
-    "CHECK_SYSTEM_LOAD": true,
-    "SYSTEM_LOAD_THRESHOLD": 0.5,
-    
-    "# Advanced Configuration": "",
-    "AUTO_DUMP_ON_ERROR": false,
-    "DEBUG_MODE": false,
-    "HOOKS_DIR": "/etc/mediaserver-autosuspend/hooks"
+  "SONARR_API_KEY": "your-sonarr-api-key", // Replace with your actual Sonarr API Key
+  "SONARR_URL": "http://your-sonarr-server:8989",  // Replace with your Sonarr server URL
+
+  "RADARR_API_KEY": "your-radarr-api-key",  // Replace with your actual Radarr API key
+  "RADARR_URL": "http://your-radarr-server:7878", // Replace with your Radarr server URL
+
+
+  "NEXTCLOUD_URL": "http://your-nextcloud-server/nextcloud", // Replace with your Nextcloud URL
+  "NEXTCLOUD_TOKEN": "your-nextcloud-token", // Replace with your Nextcloud app password or personal access token
+  "NEXTCLOUD_CPU_THRESHOLD": 0.5, // CPU threshold for Nextcloud activity (0.0 - 1.0)
+
+  "GRACE_PERIOD": 600, // Time in seconds to wait before suspending (10 minutes)
+  "CHECK_INTERVAL": 60,  // Time in seconds between checks (1 minute)
+  "MIN_UPTIME": 300,  // Minimum uptime in seconds before suspending (5 minutes)
+  "SUSPENSION_COOLDOWN": 1800, // Minimum time after a failed suspend before attempting again (30min)
+
+  "WAKE_UP_TIMES": [ // Times to wake the server each day
+    "07:00",       // Example: 7 AM
+    "13:00",       // Example: 1 PM
+    "19:00"        // Example: 7 PM
+  ],
+  "TIMEZONE": "UTC",    // Timezone for wake-up times (e.g., "America/New_York") --CHANGED--
+
+  "SERVICES": {
+    "jellyfin": true,  // Enable/disable checking Jellyfin
+    "plex": false,     // Enable/disable checking Plex  --CHANGED--
+    "sonarr": true,   // Enable/disable checking Sonarr
+    "radarr": true,   // Enable/disable checking Radarr
+    "nextcloud": true, // Enable/disable checking Nextcloud
+    "system": true      // Enable/disable checking for logged-in users --CHANGED--
+  },
+
+  "IGNORE_USERS": [],  // List of users to ignore when checking logged-in users
+  "SYSTEM_LOAD_THRESHOLD": 0.5, // System load threshold to consider as activity (float, 0.0 - 1.0)
+  "CHECK_SYSTEM_LOAD": true, // Enable/disable checking system load as activity
+
+  "HOOKS_DIR": "/etc/mediaserver-autosuspend/hooks", // Directory containing pre/post-suspend hooks  --CHANGED--
+
+  "LOG_LEVEL": "INFO", // Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  "LOG_FILE": "/var/log/mediaserver-autosuspend/mediaserver-autosuspend.log", // Path to log file
+  "MAX_LOG_SIZE": 10485760,    // Maximum log file size in bytes (10MB)
+  "LOG_BACKUP_COUNT": 5,      // Number of log backups to keep
+  "LOG_JSON": false,         // Use JSON log format  --CHANGED--
+  "USE_SYSLOG": false,       // Log to syslog  --CHANGED--
+  "LOG_COLORS": true,         // Use colored logs (for console output) --CHANGED--
+  "MIN_CHECK_INTERVAL": 1,  // Minimum time in seconds between checks for a single service --CHANGED--
+  "AUTO_DUMP_ON_ERROR": false,   // Automatically dump system state on errors
+  "DEBUG_MODE": false          // Enable more verbose debugging logs (if needed) --CHANGED--
 }
