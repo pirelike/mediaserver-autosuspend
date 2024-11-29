@@ -1,59 +1,85 @@
 """
 Configuration management for MediaServer AutoSuspend.
 
-This module handles loading, validation, and management of configuration settings.
-It provides defaults, schema validation, and environment variable overrides.
+This module handles loading, validation, and management of configuration settings
+from multiple sources including files, environment variables, and defaults.
 """
 
 import os
 import json
 import logging
-from typing import Dict, Any, Optional
+import re
 from pathlib import Path
 from copy import deepcopy
+from typing import Dict, Any, Optional, List, Set
 
 logger = logging.getLogger(__name__)
 
 # Default configuration values
 DEFAULT_CONFIG = {
+    # Service URLs with default localhost endpoints
     "JELLYFIN_URL": "http://localhost:8096",
+    "PLEX_URL": "http://localhost:32400",
     "RADARR_URL": "http://localhost:7878",
     "SONARR_URL": "http://localhost:8989",
     "NEXTCLOUD_URL": "http://localhost:9000",
     
+    # Service feature flags
+    "PLEX_MONITOR_TRANSCODING": True,
+    "PLEX_IGNORE_PAUSED": False,
+    "NEXTCLOUD_CPU_THRESHOLD": 0.5,
+    
+    # Timing configurations
     "GRACE_PERIOD": 600,  # 10 minutes
     "CHECK_INTERVAL": 60,  # 1 minute
-    "LOG_LEVEL": "INFO",
-    "LOG_FILE": "/var/log/mediaserver-autosuspend.log",
-    "MAX_LOG_SIZE": 10485760,  # 10MB
-    "LOG_BACKUP_COUNT": 5,
+    "MIN_UPTIME": 300,    # 5 minutes minimum uptime
+    "SUSPENSION_COOLDOWN": 1800,  # 30 minutes between suspension attempts
     
+    # Wake-up schedule
+    "WAKE_UP_TIMES": ["07:00", "13:00", "19:00"],
+    "TIMEZONE": "UTC",
+    
+    # Service enablement flags
     "SERVICES": {
         "jellyfin": True,
+        "plex": False,
         "sonarr": True,
         "radarr": True,
         "nextcloud": True,
         "system": True
     },
     
-    "NEXTCLOUD_CPU_THRESHOLD": 0.5,
-    "WAKE_UP_TIMES": ["07:00", "13:00", "19:00"],
-    "TIMEZONE": "UTC",
+    # System monitoring settings
+    "IGNORE_USERS": [],
+    "SYSTEM_LOAD_THRESHOLD": 0.5,
+    "CHECK_SYSTEM_LOAD": True,
     
+    # Hooks and paths
+    "HOOKS_DIR": "/etc/mediaserver-autosuspend/hooks",
+    
+    # Logging configuration
+    "LOG_LEVEL": "INFO",
+    "LOG_FILE": "/var/log/mediaserver-autosuspend/mediaserver-autosuspend.log",
+    "MAX_LOG_SIZE": 10485760,    # 10MB
+    "LOG_BACKUP_COUNT": 5,
+    "LOG_JSON": False,
+    "USE_SYSLOG": False,
+    "LOG_COLORS": True,
+    
+    # Debug settings
+    "MIN_CHECK_INTERVAL": 1,
     "AUTO_DUMP_ON_ERROR": False,
     "DEBUG_MODE": False
 }
 
-# Required configuration keys that must be provided
+# Required API keys/tokens for each service
 REQUIRED_KEYS = {
-    "JELLYFIN_API_KEY",
-    "RADARR_API_KEY",
-    "SONARR_API_KEY",
-    "NEXTCLOUD_TOKEN"
+    "jellyfin": {"JELLYFIN_API_KEY"},
+    "plex": {"PLEX_TOKEN"},
+    "sonarr": {"SONARR_API_KEY"},
+    "radarr": {"RADARR_API_KEY"},
+    "nextcloud": {"NEXTCLOUD_TOKEN"}
 }
-
-# Environment variable prefix for configuration overrides
-ENV_PREFIX = "AUTOSUSPEND_"
 
 class ConfigurationError(Exception):
     """Base exception for configuration-related errors."""
@@ -75,6 +101,7 @@ class ConfigurationManager:
         """
         self.config_path = config_path
         self.config: Dict[str, Any] = deepcopy(DEFAULT_CONFIG)
+        self._load_paths = self._get_config_paths()
     
     def load_config(self) -> Dict[str, Any]:
         """
@@ -82,14 +109,15 @@ class ConfigurationManager:
         
         Returns:
             Dict containing merged configuration
-        
+            
         Raises:
-            ConfigurationError: If configuration loading fails
-            ConfigValidationError: If configuration validation fails
+            ConfigurationError: If configuration cannot be loaded or validated
         """
-        # Load configuration file if specified
+        # Load from file if specified, otherwise try standard locations
         if self.config_path:
-            self._load_from_file()
+            self._load_from_file(self.config_path)
+        else:
+            self._load_from_first_available()
         
         # Load environment variables
         self._load_from_env()
@@ -99,14 +127,43 @@ class ConfigurationManager:
         
         return self.config
     
-    def _load_from_file(self) -> None:
-        """Load configuration from file."""
+    def _get_config_paths(self) -> List[Path]:
+        """Get list of standard configuration file locations."""
+        return [
+            Path.cwd() / "config.json",
+            Path.home() / ".config" / "mediaserver-autosuspend" / "config.json",
+            Path("/etc/mediaserver-autosuspend/config.json")
+        ]
+    
+    def _load_from_first_available(self) -> None:
+        """Load configuration from first available standard location."""
+        for path in self._load_paths:
+            if path.is_file():
+                try:
+                    self._load_from_file(str(path))
+                    logger.info(f"Loaded configuration from {path}")
+                    return
+                except Exception as e:
+                    logger.warning(f"Failed to load config from {path}: {e}")
+        
+        logger.warning("No configuration file found in standard locations")
+    
+    def _load_from_file(self, path: str) -> None:
+        """
+        Load configuration from specified file.
+        
+        Args:
+            path: Path to configuration file
+            
+        Raises:
+            ConfigurationError: If file cannot be loaded
+        """
         try:
-            with open(self.config_path) as f:
+            with open(path) as f:
                 file_config = json.load(f)
                 self.config.update(file_config)
         except FileNotFoundError:
-            raise ConfigurationError(f"Configuration file not found: {self.config_path}")
+            raise ConfigurationError(f"Configuration file not found: {path}")
         except json.JSONDecodeError as e:
             raise ConfigurationError(f"Invalid JSON in configuration file: {e}")
         except Exception as e:
@@ -114,9 +171,10 @@ class ConfigurationManager:
     
     def _load_from_env(self) -> None:
         """Load configuration from environment variables."""
+        prefix = "AUTOSUSPEND_"
         for key, value in os.environ.items():
-            if key.startswith(ENV_PREFIX):
-                config_key = key[len(ENV_PREFIX):]
+            if key.startswith(prefix):
+                config_key = key[len(prefix):]
                 try:
                     # Try to parse as JSON for complex values
                     self.config[config_key] = json.loads(value)
@@ -131,76 +189,111 @@ class ConfigurationManager:
         Raises:
             ConfigValidationError: If validation fails
         """
-        # Check required keys
-        missing_keys = REQUIRED_KEYS - set(self.config.keys())
+        self._validate_services()
+        self._validate_urls()
+        self._validate_timing()
+        self._validate_wake_times()
+        self._validate_thresholds()
+        self._validate_paths()
+    
+    def _validate_services(self) -> None:
+        """Validate service configuration and required keys."""
+        enabled_services = self.config.get('SERVICES', {})
+        
+        # Ensure only one media service is enabled
+        if enabled_services.get('jellyfin', False) and enabled_services.get('plex', False):
+            raise ConfigValidationError(
+                "Only one media service (Jellyfin or Plex) should be enabled"
+            )
+        
+        # Check required keys for enabled services
+        missing_keys: Set[str] = set()
+        for service, required in REQUIRED_KEYS.items():
+            if enabled_services.get(service, False):
+                missing = required - set(self.config.keys())
+                if missing:
+                    missing_keys.update(missing)
+        
         if missing_keys:
             raise ConfigValidationError(
                 f"Missing required configuration keys: {missing_keys}"
             )
-        
-        # Validate URLs
-        self._validate_urls()
-        
-        # Validate numeric values
-        self._validate_numeric_values()
-        
-        # Validate service configuration
-        self._validate_services()
-        
-        # Validate wake-up times
-        self._validate_wake_times()
     
     def _validate_urls(self) -> None:
-        """Validate URL configurations."""
-        for key in ['JELLYFIN_URL', 'RADARR_URL', 'SONARR_URL', 'NEXTCLOUD_URL']:
+        """Validate URL formats."""
+        url_keys = [
+            'JELLYFIN_URL', 'PLEX_URL', 'RADARR_URL',
+            'SONARR_URL', 'NEXTCLOUD_URL'
+        ]
+        for key in url_keys:
             url = self.config.get(key, '')
-            if not url.startswith(('http://', 'https://')):
+            if url and not url.startswith(('http://', 'https://')):
+                raise ConfigValidationError(f"Invalid URL format for {key}: {url}")
+    
+    def _validate_timing(self) -> None:
+        """Validate timing-related configurations."""
+        timing_checks = {
+            'GRACE_PERIOD': (0, None),
+            'CHECK_INTERVAL': (1, None),
+            'MIN_UPTIME': (0, None),
+            'SUSPENSION_COOLDOWN': (0, None),
+            'MIN_CHECK_INTERVAL': (1, 60)
+        }
+        
+        for key, (min_val, max_val) in timing_checks.items():
+            value = self.config.get(key, 0)
+            if not isinstance(value, (int, float)) or value < min_val:
                 raise ConfigValidationError(
-                    f"Invalid URL format for {key}: {url}"
+                    f"{key} must be a number >= {min_val}"
                 )
-    
-    def _validate_numeric_values(self) -> None:
-        """Validate numeric configuration values."""
-        # Check grace period
-        grace_period = self.config.get('GRACE_PERIOD', 0)
-        if not isinstance(grace_period, (int, float)) or grace_period < 0:
-            raise ConfigValidationError(
-                f"Invalid GRACE_PERIOD value: {grace_period}"
-            )
-        
-        # Check check interval
-        check_interval = self.config.get('CHECK_INTERVAL', 0)
-        if not isinstance(check_interval, (int, float)) or check_interval < 1:
-            raise ConfigValidationError(
-                f"Invalid CHECK_INTERVAL value: {check_interval}"
-            )
-    
-    def _validate_services(self) -> None:
-        """Validate service configuration."""
-        services = self.config.get('SERVICES', {})
-        if not isinstance(services, dict):
-            raise ConfigValidationError("SERVICES must be a dictionary")
-        
-        for service, enabled in services.items():
-            if not isinstance(enabled, bool):
+            if max_val and value > max_val:
                 raise ConfigValidationError(
-                    f"Service {service} enabled status must be boolean"
+                    f"{key} must be <= {max_val}"
                 )
     
     def _validate_wake_times(self) -> None:
-        """Validate wake-up time configuration."""
+        """Validate wake-up time format."""
         wake_times = self.config.get('WAKE_UP_TIMES', [])
         if not isinstance(wake_times, list):
             raise ConfigValidationError("WAKE_UP_TIMES must be a list")
         
-        import re
         time_pattern = re.compile(r'^([01]\d|2[0-3]):([0-5]\d)$')
-        
         for time_str in wake_times:
             if not time_pattern.match(time_str):
                 raise ConfigValidationError(
                     f"Invalid wake-up time format: {time_str}"
                 )
+    
+    def _validate_thresholds(self) -> None:
+        """Validate threshold values."""
+        threshold_checks = {
+            'NEXTCLOUD_CPU_THRESHOLD': (0.0, 1.0),
+            'SYSTEM_LOAD_THRESHOLD': (0.0, 1.0)
+        }
+        
+        for key, (min_val, max_val) in threshold_checks.items():
+            value = self.config.get(key, 0)
+            if not isinstance(value, (int, float)) or \
+               not min_val <= value <= max_val:
+                raise ConfigValidationError(
+                    f"{key} must be between {min_val} and {max_val}"
+                )
+    
+    def _validate_paths(self) -> None:
+        """Validate and create required directories."""
+        required_dirs = [
+            os.path.dirname(self.config.get('LOG_FILE', '')),
+            self.config.get('HOOKS_DIR', '')
+        ]
+        
+        for dir_path in required_dirs:
+            if dir_path:
+                try:
+                    os.makedirs(dir_path, exist_ok=True)
+                except Exception as e:
+                    raise ConfigValidationError(
+                        f"Failed to create directory {dir_path}: {e}"
+                    )
     
     def generate_example_config(self, output_path: str) -> None:
         """
@@ -212,30 +305,19 @@ class ConfigurationManager:
         example_config = deepcopy(DEFAULT_CONFIG)
         example_config.update({
             'JELLYFIN_API_KEY': 'your-jellyfin-api-key',
+            'PLEX_TOKEN': 'your-plex-token',
             'RADARR_API_KEY': 'your-radarr-api-key',
             'SONARR_API_KEY': 'your-sonarr-api-key',
             'NEXTCLOUD_TOKEN': 'your-nextcloud-token'
         })
         
         try:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
             with open(output_path, 'w') as f:
-                json.dump(example_config, f, indent=4)
+                json.dump(example_config, f, indent=2)
             logger.info(f"Example configuration written to {output_path}")
         except Exception as e:
             raise ConfigurationError(f"Error writing example configuration: {e}")
-    
-    def get_config_locations(self) -> list:
-        """
-        Get list of standard configuration file locations.
-        
-        Returns:
-            List of potential configuration file paths
-        """
-        return [
-            Path.cwd() / "config.json",
-            Path.home() / ".config" / "mediaserver-autosuspend" / "config.json",
-            Path("/etc/mediaserver-autosuspend/config.json")
-        ]
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
