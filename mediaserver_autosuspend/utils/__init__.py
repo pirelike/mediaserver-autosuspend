@@ -10,7 +10,6 @@ Features:
 - Process management and monitoring
 - Single instance enforcement
 - PID file handling
-- System state dumping
 - Memory usage tracking
 - Process tree management
 
@@ -28,7 +27,7 @@ from typing import Dict, Any, Optional, List, Union
 from pathlib import Path
 
 # Import all process management utilities
-from mediaserver_autosuspend.utils.process import (
+from .process import (
     ProcessError,
     check_single_instance,
     get_process_info,
@@ -51,7 +50,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     # Exceptions
     'ProcessError',
-    
+
     # Process Management
     'check_single_instance',
     'get_process_info',
@@ -62,65 +61,14 @@ __all__ = [
     'get_script_pid',
     'write_pid_file',
     'remove_pid_file',
-    
+
     # Process Tree Management
     'get_child_processes',
     'kill_process_tree',
-    
+
     # Memory Management
     'get_process_memory_usage',
-    
-    # System State Management
-    'dump_system_state',
 ]
-
-def dump_system_state(manager: Any) -> Optional[str]:
-    """
-    Dump current system state for debugging purposes.
-    
-    Args:
-        manager: SuspensionManager instance
-        
-    Returns:
-        Optional[str]: Path to dump file if successful, None otherwise
-    """
-    try:
-        from datetime import datetime
-        import json
-        
-        # Create dump directory if needed
-        dump_dir = Path.home() / '.local/share/mediaserver-autosuspend/dumps'
-        dump_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Generate dump filename with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        dump_file = dump_dir / f'state_dump_{timestamp}.json'
-        
-        # Collect system state
-        current_pid = get_script_pid()
-        state = {
-            'timestamp': timestamp,
-            'service_status': manager.get_status_summary(),
-            'uptime': manager._get_uptime(),
-            'last_suspension': (
-                manager.last_suspension.isoformat()
-                if manager.last_suspension else None
-            ),
-            'suspension_count': manager.suspension_count,
-            'process_info': get_process_info(current_pid),
-            'memory_usage': get_process_memory_usage(current_pid),
-            'child_processes': get_child_processes(current_pid)
-        }
-        
-        # Write dump file
-        dump_file.write_text(json.dumps(state, indent=2))
-        
-        logger.info(f"System state dumped to {dump_file}")
-        return str(dump_file)
-        
-    except Exception as e:
-        logger.error(f"Failed to dump system state: {e}")
-        return None
 
 def init_utils() -> Dict[str, bool]:
     """
