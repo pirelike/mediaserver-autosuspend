@@ -24,10 +24,7 @@ from mediaserver_autosuspend import (
     SuspensionManager,
     __version__
 )
-from mediaserver_autosuspend.utils.process import (
-    check_single_instance,
-    dump_system_state
-)
+from mediaserver_autosuspend.utils import check_single_instance
 from mediaserver_autosuspend.logger import setup_logging
 from mediaserver_autosuspend.config import ConfigurationManager
 
@@ -114,11 +111,6 @@ def parse_arguments() -> argparse.Namespace:
         help='Enable debug logging',
         action='store_true'
     )
-    debug_group.add_argument(
-        '--dump-state',
-        help='Dump current system state to file',
-        action='store_true'
-    )
     
     # Misc options
     misc_group = parser.add_argument_group('Miscellaneous')
@@ -181,10 +173,6 @@ def monitor_loop(manager: SuspensionManager, exit_handler: GracefulExit) -> None
         except Exception as e:
             logger.exception("Error in monitoring loop")
             failed_checks += 1
-            
-            # Dump state on error if configured
-            if manager.config.get('AUTO_DUMP_ON_ERROR'):
-                dump_system_state(manager)
 
 def test_services(manager: SuspensionManager) -> bool:
     """
@@ -258,10 +246,6 @@ def main() -> NoReturn:
             manager.suspend_system()
             sys.exit(0)
         
-        if args.dump_state:
-            dump_system_state(manager)
-            sys.exit(0)
-        
         # Main monitoring loop
         with GracefulExit() as exit_handler:
             logger.info("Starting MediaServer AutoSuspend monitoring...")
@@ -269,8 +253,6 @@ def main() -> NoReturn:
     
     except Exception as e:
         logger.exception("Unexpected error occurred")
-        if args.dump_state or config.get('AUTO_DUMP_ON_ERROR'):
-            dump_system_state(manager)
         sys.exit(1)
 
 if __name__ == "__main__":
