@@ -32,26 +32,81 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Check Python version
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-if [ "$(echo "$PYTHON_VERSION < 3.7" | bc)" -eq 1 ]; then
-    log_error "Python 3.7 or higher is required (found Python $PYTHON_VERSION)"
-    exit 1
-fi
+# Function to check Python version
+check_python() {
+    local min_version="3.7"
+    local python_cmd=""
+    
+    # Try different Python commands
+    for cmd in python3 python; do
+        if command -v $cmd &> /dev/null; then
+            python_cmd=$cmd
+            break
+        fi
+    done
+    
+    if [ -z "$python_cmd" ]; then
+        log_error "Python 3.7 or higher is required but no Python installation found"
+        exit 1
+    fi
+    
+    # Get Python version
+    PYTHON_VERSION=$($python_cmd -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    
+    # Compare versions
+    if [ "$(printf '%s\n' "$min_version" "$PYTHON_VERSION" | sort -V | head -n1)" != "$min_version" ]; then
+        log_error "Python 3.7 or higher is required (found Python $PYTHON_VERSION)"
+        exit 1
+    fi
+    
+    return 0
+}
+
+# Function to check and install pip if needed
+check_pip() {
+    local python_cmd=$1
+    
+    # Try to find pip
+    if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
+        log_warn "pip not found. Attempting to install..."
+        
+        if command -v apt-get &> /dev/null; then
+            apt-get update
+            apt-get install -y python3-pip
+        elif command -v dnf &> /dev/null; then
+            dnf install -y python3-pip
+        elif command -v yum &> /dev/null; then
+            yum install -y python3-pip
+        elif command -v zypper &> /dev/null; then
+            zypper install -y python3-pip
+        elif command -v pacman &> /dev/null; then
+            pacman -S --noconfirm python-pip
+        else
+            log_error "Could not find package manager to install pip. Please install python3-pip manually."
+            exit 1
+        fi
+    fi
+    
+    # Verify pip installation
+    if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
+        log_error "Failed to install pip. Please install python3-pip manually."
+        exit 1
+    fi
+}
 
 # Check required commands
-REQUIRED_COMMANDS="systemctl rtcwake who sync python3 pip3"
-MISSING_COMMANDS=""
-for cmd in $REQUIRED_COMMANDS; do
-    if ! command -v "$cmd" &> /dev/null; then
-        MISSING_COMMANDS="$MISSING_COMMANDS $cmd"
-    fi
-done
-
-if [ ! -z "$MISSING_COMMANDS" ]; then
-    log_error "Required commands not found:$MISSING_COMMANDS"
-    exit 1
-fi
+check_required_commands() {
+    local missing=0
+    
+    for cmd in systemctl rtcwake who sync; do
+        if ! command -v "$cmd" &> /dev/null; then
+            log_error "Required command not found: $cmd"
+            missing=1
+        fi
+    done
+    
+    return $missing
+}
 
 # Installation paths
 INSTALL_DIR="/opt/mediaserver-autosuspend"
@@ -60,6 +115,12 @@ LOG_DIR="/var/log/mediaserver-autosuspend"
 SYSTEMD_DIR="/etc/systemd/system"
 VENV_DIR="$INSTALL_DIR/venv"
 HOOKS_DIR="$CONFIG_DIR/hooks"
+
+# Check system requirements
+log_info "Checking system requirements..."
+check_python
+check_pip python3
+check_required_commands || exit 1
 
 # Create directories
 log_info "Creating directories..."
@@ -76,13 +137,13 @@ source "$VENV_DIR/bin/activate"
 
 # Install Python dependencies
 log_info "Installing Python dependencies..."
-pip install --upgrade pip
-pip install wheel
-pip install -r "$PROJECT_ROOT/requirements.txt"
+"$VENV_DIR/bin/pip" install --upgrade pip
+"$VENV_DIR/bin/pip" install wheel
+"$VENV_DIR/bin/pip" install -r "$PROJECT_ROOT/requirements.txt"
 
 # Install the package in development mode
 log_info "Installing mediaserver-autosuspend package..."
-pip install -e "$PROJECT_ROOT"
+"$VENV_DIR/bin/pip" install -e "$PROJECT_ROOT"
 
 # Copy configuration files
 log_info "Copying configuration files..."
@@ -90,7 +151,7 @@ if [ ! -f "$CONFIG_DIR/config.json" ]; then
     cp "$PROJECT_ROOT/config.example.json" "$CONFIG_DIR/config.json"
     log_info "Created initial configuration file"
 else
-    log_info "Configuration file already exists, skipping..."
+    log_warn "Configuration file already exists, skipping..."
 fi
 
 # Copy files
@@ -160,12 +221,6 @@ log_warn "3. Verify the service URLs"
 log_info "Installation completed successfully!"
 log_info "You can monitor the service with: journalctl -u mediaserver-autosuspend -f"
 log_info "To uninstall, run: $INSTALL_DIR/uninstall.sh"
-
-# Check if running in a virtual environment
-if [ -n "$VIRTUAL_ENV" ]; then
-    log_warn "You are currently in a Python virtual environment ($VIRTUAL_ENV)"
-    log_warn "The service will use its own virtual environment at $VENV_DIR"
-fi
 
 # Deactivate virtual environment
 deactivate
