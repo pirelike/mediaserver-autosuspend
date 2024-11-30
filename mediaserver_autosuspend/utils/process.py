@@ -7,12 +7,6 @@ This module provides utilities for process management and monitoring, including:
 - Process status checking
 - Process discovery and management
 - PID file handling
-
-Example:
-    >>> from mediaserver_autosuspend.utils.process import check_single_instance
-    >>> if check_single_instance():
-    ...     print("No other instances running")
-    ...     # Continue with application startup
 """
 
 import os
@@ -142,7 +136,6 @@ def is_process_running(pid: int) -> bool:
         bool: True if process is running, False otherwise
     """
     try:
-        # Check if process exists and is running
         process = psutil.Process(pid)
         return process.is_running() and process.status() != psutil.STATUS_ZOMBIE
     except psutil.NoSuchProcess:
