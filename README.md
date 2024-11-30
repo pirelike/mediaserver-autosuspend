@@ -106,6 +106,7 @@ git clone https://github.com/pirelike/mediaserver-autosuspend.git
 cd mediaserver-autosuspend
 
 # Run installation script
+sudo chmod +x install.sh
 sudo ./install.sh
 ```
 
