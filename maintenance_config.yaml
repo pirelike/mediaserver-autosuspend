@@ -1,0 +1,11 @@
+# Daily Maintenance Configuration
+
+logging:
+  file: "/home/mediaserver/scripts/daily_maintenance.log"  # Path to the log file
+  max_lines: 500   # Maximum number of lines to keep in the log file
+
+maintenance:
+  grace_period: 60        # Wait time after start (seconds)
+  docker_prune: true      # Whether to clean Docker (yes/no, true/false, 1/0)
+  log_retention_days: 7   # System log retention (days)
+  restart_delay: 5        # Seconds to wait before restart
