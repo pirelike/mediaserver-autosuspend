@@ -6,398 +6,281 @@
 
 An intelligent power management system for media servers that automatically suspends your server during periods of inactivity while ensuring all services are properly monitored and managed.
 
-## 🌟 Features
+# AutoSuspend - Smart Server Power Management
 
-### Core Functionality
-- **Intelligent Service Monitoring**
-  - Real-time activity detection
-  - Configurable grace periods
-  - Multiple service support
-  - Reliable state tracking
+AutoSuspend is a Python-based system that monitors various services (Jellyfin, Sonarr, Radarr, Nextcloud) and automatically manages server power state. It works in conjunction with a Wake-on-LAN monitor (like [Autowake](link-to-autowake)) to create an efficient power management system for home servers.
 
-### Media Server Integration
-- **Jellyfin Support**
-  - Active session monitoring
-  - Playback state detection
-  - Background task tracking
-  - API-based integration
+## Features
 
-- **Plex Support**
-  - Session tracking
-  - Transcoding detection
-  - Pause state handling
-  - Queue monitoring
+- Monitors multiple services:
+  - Jellyfin media sessions
+  - Sonarr/Radarr download queues
+  - Nextcloud activity
+  - System user sessions
+  - External activity (via Pi monitor)
+- Configurable grace period before suspend
+- Automatic system updates before suspend
+- Support for scheduled wake-ups
+- Systemd service integration
+- YAML configuration
+- Line-based log rotation
 
-### Download Management
-- **Sonarr Integration**
-  - Queue monitoring
-  - Download tracking
-  - Status updates
+## Prerequisites
 
-- **Radarr Integration**
-  - Active download detection
-  - Queue management
-  - Status monitoring
+- Python 3.8 or higher
+- Linux system (tested on Ubuntu Server)
+- Systemd
+- Services to monitor:
+  - Jellyfin
+  - Sonarr
+  - Radarr
+  - Nextcloud
+- Wake-on-LAN capability
 
-### System Management
-- **Advanced Power Controls**
-  - Configurable grace periods
-  - Scheduled wake-up times
-  - System load monitoring
-  - Safe suspension handling
+## Installation
 
-- **Nextcloud Integration**
-  - CPU load monitoring
-  - Activity tracking
-  - Resource usage detection
-
-### Safety Features
-- **Robust Error Handling**
-  - Service connectivity checks
-  - Graceful degradation
-  - Error recovery
-  - Activity verification
-
-- **System Protection**
-  - Minimum uptime enforcement
-  - Suspension cooldown
-  - Pre/Post suspension hooks
-  - Safe state verification
-
-### Monitoring & Logging
-- **Comprehensive Logging**
-  - Detailed activity logs
-  - JSON format support
-  - Log rotation
-  - Syslog integration
-
-- **Status Reporting**
-  - Service state tracking
-  - Activity statistics
-  - Error reporting
-  - Performance metrics
-
-## 📋 Prerequisites
-
-### System Requirements
-- Linux-based operating system with `systemd` support
-- Python 3.7 or higher
-- `sudo` privileges for system suspension
-- `rtcwake` utility for scheduled wake-ups
-
-### Required Services (At least one)
-- Jellyfin Media Server
-- Plex Media Server
-
-### Optional Services
-- Sonarr
-- Radarr
-- Nextcloud
-
-### Python Dependencies
-Core dependencies are automatically installed during setup. For development, additional packages may be required. See [Development Setup](#-development-setup) for details.
-
-## 🚀 Installation
-
-### Quick Install (Recommended)
+1. Clone the repository:
 ```bash
-# Clone the repository
-git clone https://github.com/pirelike/mediaserver-autosuspend.git
-cd mediaserver-autosuspend
-
-# Run installation script
-sudo chmod +x install.sh
-sudo ./install.sh
+git clone https://github.com/yourusername/autosuspend.git
+cd autosuspend
 ```
 
-### Manual Installation
+2. Create and activate a virtual environment:
 ```bash
-# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
+```
 
-# Install dependencies
+3. Install required packages:
+```bash
 pip install -r requirements.txt
+```
 
-# Create configuration directory
-sudo mkdir -p /etc/mediaserver-autosuspend
-sudo cp config.example.json /etc/mediaserver-autosuspend/config.json
+4. Copy configuration and scripts:
+```bash
+sudo mkdir -p /home/mediaserver/scripts
+sudo cp autosuspend.py /home/mediaserver/scripts/
+sudo cp autosuspend_config.yaml /home/mediaserver/scripts/
+sudo cp daily_maintenance.sh /usr/local/bin/
+```
 
-# Install systemd service
-sudo cp systemd/mediaserver-autosuspend.service /etc/systemd/system/
+5. Edit the configuration file:
+```bash
+sudo nano /home/mediaserver/scripts/autosuspend_config.yaml
+```
+
+Adjust the settings:
+```yaml
+# API Keys and URLs
+jellyfin:
+  api_key: "your-jellyfin-api-key"
+  url: "http://localhost:8096"
+
+radarr:
+  api_key: "your-radarr-api-key"
+  url: "http://localhost:7878"
+
+sonarr:
+  api_key: "your-sonarr-api-key"
+  url: "http://localhost:8989"
+
+nextcloud:
+  url: "http://localhost:9000"
+  token: "your-nextcloud-token"
+
+raspberry_pi:
+  url: "http://your-pi-ip:5005"
+
+# Monitoring Configuration
+monitoring:
+  check_interval: 30  # seconds
+  grace_period: 600   # seconds (10 minutes)
+
+# Logging Configuration
+logging:
+  file: "/home/mediaserver/scripts/autosuspend.log"
+  max_lines: 500
+```
+
+6. Create the service files:
+
+Main service:
+```bash
+sudo nano /etc/systemd/system/autosuspend.service
+```
+
+Add:
+```ini
+[Unit]
+Description=Autosuspend Service
+After=network.target
+
+[Service]
+Type=simple
+User=mediaserver
+Group=mediaserver
+WorkingDirectory=/home/mediaserver/scripts
+Environment=PATH=/home/mediaserver/scripts/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/mediaserver/scripts/venv/bin/python3 /home/mediaserver/scripts/autosuspend.py
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Daily maintenance timer:
+```bash
+sudo nano /etc/systemd/system/daily-maintenance.timer
+```
+
+Add:
+```ini
+[Unit]
+Description=Run Daily System Maintenance after Wake-up
+
+[Timer]
+OnCalendar=*-*-* 01:57:00
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Daily maintenance service:
+```bash
+sudo nano /etc/systemd/system/daily-maintenance.service
+```
+
+Add:
+```ini
+[Unit]
+Description=Daily System Maintenance
+After=network.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/daily_maintenance.sh
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+7. Set proper permissions:
+```bash
+sudo chown -R mediaserver:mediaserver /home/mediaserver/scripts
+sudo chmod +x /home/mediaserver/scripts/autosuspend.py
+sudo chmod +x /usr/local/bin/daily_maintenance.sh
+```
+
+8. Enable and start services:
+```bash
 sudo systemctl daemon-reload
-sudo systemctl enable mediaserver-autosuspend
+sudo systemctl enable autosuspend
+sudo systemctl start autosuspend
+sudo systemctl enable daily-maintenance.timer
+sudo systemctl start daily-maintenance.timer
 ```
 
-## ⚙️ Configuration
+## Usage
 
-### Basic Configuration
-1. Copy the example configuration:
-   ```bash
-   sudo cp config.example.json /etc/mediaserver-autosuspend/config.json
-   ```
+### Checking Service Status
 
-2. Edit the configuration file:
-   ```bash
-   sudo nano /etc/mediaserver-autosuspend/config.json
-   ```
-
-### Media Server Setup
-
-#### Jellyfin Configuration
-1. Get your API key:
-   - Go to Jellyfin Dashboard → Advanced → API Keys
-   - Create a new API key
-2. Update config.json:
-   ```json
-   {
-     "SERVICES": {
-       "jellyfin": true,
-       "plex": false
-     },
-     "JELLYFIN_API_KEY": "your-api-key",
-     "JELLYFIN_URL": "http://localhost:8096"
-   }
-   ```
-
-#### Plex Configuration
-1. Get your Plex token ([Finding your Plex token](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/))
-2. Update config.json:
-   ```json
-   {
-     "SERVICES": {
-       "jellyfin": false,
-       "plex": true
-     },
-     "PLEX_TOKEN": "your-plex-token",
-     "PLEX_URL": "http://localhost:32400",
-     "PLEX_MONITOR_TRANSCODING": true,
-     "PLEX_IGNORE_PAUSED": false
-   }
-   ```
-
-### Additional Services
-
-#### Sonarr Configuration
-1. Get your API key from Sonarr:
-   - Settings → General → API Key
-2. Update config.json:
-   ```json
-   {
-     "SONARR_API_KEY": "your-api-key",
-     "SONARR_URL": "http://localhost:8989"
-   }
-   ```
-
-#### Radarr Configuration
-1. Get your API key from Radarr:
-   - Settings → General → API Key
-2. Update config.json:
-   ```json
-   {
-     "RADARR_API_KEY": "your-api-key",
-     "RADARR_URL": "http://localhost:7878"
-   }
-   ```
-
-#### Nextcloud Configuration
-1. Create an app password:
-   - Settings → Security → App passwords
-2. Update config.json:
-   ```json
-   {
-     "NEXTCLOUD_URL": "http://your-nextcloud-server",
-     "NEXTCLOUD_TOKEN": "your-app-password",
-     "NEXTCLOUD_CPU_THRESHOLD": 0.5
-   }
-   ```
-
-### System Configuration
-
-#### Timing Settings
-```json
-{
-  "GRACE_PERIOD": 600,        // Wait time before suspension (seconds)
-  "CHECK_INTERVAL": 60,       // Time between checks (seconds)
-  "MIN_UPTIME": 300,         // Minimum uptime before allowing suspension
-  "SUSPENSION_COOLDOWN": 1800 // Time between suspension attempts (seconds)
-}
-```
-
-#### Wake-up Schedule
-```json
-{
-  "WAKE_UP_TIMES": [
-    "07:00",
-    "13:00",
-    "19:00"
-  ],
-  "TIMEZONE": "UTC"
-}
-```
-
-## 🛠️ Advanced Features
-
-### Custom Hooks
-Create scripts to run before/after suspension:
-
-1. Create hook directories:
-   ```bash
-   sudo mkdir -p /etc/mediaserver-autosuspend/hooks/pre-suspend.d
-   sudo mkdir -p /etc/mediaserver-autosuspend/hooks/post-suspend.d
-   ```
-
-2. Create your scripts:
-   ```bash
-   sudo nano /etc/mediaserver-autosuspend/hooks/pre-suspend.d/stop-services.sh
-   ```
-   ```bash
-   #!/bin/bash
-   # Example: Stop services before suspension
-   systemctl stop transmission
-   ```
-
-3. Make scripts executable:
-   ```bash
-   sudo chmod +x /etc/mediaserver-autosuspend/hooks/pre-suspend.d/stop-services.sh
-   ```
-
-### Logging Configuration
-Configure logging behavior in config.json:
-```json
-{
-  "LOG_LEVEL": "INFO",
-  "LOG_FILE": "/var/log/mediaserver-autosuspend/service.log",
-  "MAX_LOG_SIZE": 10485760,    // 10MB
-  "LOG_BACKUP_COUNT": 5,
-  "LOG_JSON": false,
-  "USE_SYSLOG": false,
-  "LOG_COLORS": true
-}
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### System Won't Suspend
-1. Check service logs:
-   ```bash
-   journalctl -u mediaserver-autosuspend -f
-   ```
-2. Verify service connectivity:
-   ```bash
-   mediaserver-autosuspend --service-test
-   ```
-3. Check configuration:
-   ```bash
-   mediaserver-autosuspend --check-only
-   ```
-
-#### Wake-up Not Working
-1. Verify RTC support:
-   ```bash
-   sudo rtcwake --list-modes
-   ```
-2. Check system logs:
-   ```bash
-   journalctl -b -1 -n 100
-   ```
-3. Verify wake-up times in config
-
-#### Service Detection Issues
-1. Test individual services:
-   ```bash
-   curl -H "X-Api-Key: your-key" http://localhost:8989/api/v3/system/status
-   ```
-2. Check network access:
-   ```bash
-   ping localhost
-   telnet localhost 8096
-   ```
-
-### Debug Mode
-Enable debug logging in config.json:
-```json
-{
-  "LOG_LEVEL": "DEBUG",
-  "DEBUG_MODE": true
-}
-```
-
-## 👩‍💻 Development Setup
-
-### Setting Up Development Environment
+Check autosuspend service:
 ```bash
-# Clone repository
-git clone https://github.com/pirelike/mediaserver-autosuspend.git
-cd mediaserver-autosuspend
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install development dependencies
-pip install -r requirements.txt
-
-# Install pre-commit hooks
-pre-commit install
+systemctl status autosuspend
 ```
 
-### Running Tests
+View logs:
 ```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_services.py
-
-# Run with coverage report
-pytest --cov=mediaserver_autosuspend
+tail -f /home/mediaserver/scripts/autosuspend.log
 ```
 
-### Code Style
-The project follows PEP 8 guidelines. Use provided tools to maintain consistency:
+Check maintenance timer:
 ```bash
-# Format code
-black .
-
-# Sort imports
-isort .
-
-# Run linter
-flake8
+systemctl list-timers daily-maintenance.timer
 ```
 
-## 📄 License
+### Service States
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The script monitors multiple states:
+- Jellyfin: Active when streaming
+- Sonarr/Radarr: Active when downloading
+- Nextcloud: Active with high CPU usage
+- System: Active with logged-in users
+- Pi Monitor: Active with recent web traffic
 
-## 🤝 Contributing
+### Power Management Sequence
+
+1. System wakes up (via WoL or schedule)
+2. Services are checked every 30 seconds
+3. If all inactive, 10-minute grace period starts
+4. If still inactive after grace period, system suspends
+5. Daily maintenance runs at 1:57 AM after scheduled wake-up
+
+### Configuration Options
+
+Key options in `autosuspend_config.yaml`:
+
+```yaml
+monitoring:
+  check_interval: 30   # How often to check services
+  grace_period: 600    # Wait time before suspend
+
+logging:
+  max_lines: 500      # Log rotation line limit
+```
+
+## Daily Maintenance
+
+The daily maintenance script:
+1. Updates package lists
+2. Installs security updates
+3. Cleans package cache
+4. Performs Docker cleanup
+5. Clears old logs
+6. Restarts the system
+
+## Troubleshooting
+
+1. Service won't start:
+   - Check logs: `journalctl -u autosuspend -n 50`
+   - Verify Python dependencies
+   - Check file permissions
+
+2. System won't suspend:
+   - Check service status in logs
+   - Verify all monitored services
+   - Check Pi monitor connection
+
+3. Maintenance issues:
+   - Check timer status
+   - Verify script permissions
+   - Check maintenance logs
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes:
-   - Follow the code style guidelines
-   - Add tests for new features
-   - Update documentation as needed
-4. Run tests: `pytest`
-5. Commit changes: `git commit -am 'Add feature'`
-6. Push to branch: `git push origin feature-name`
-7. Submit a Pull Request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
 
-## 🙏 Acknowledgments
+## Security Considerations
 
-- Original concept inspired by various media server management tools
-- Thanks to the Jellyfin, Plex, Sonarr, Radarr, and Nextcloud communities
-- Special thanks to all contributors and users providing feedback
+- API keys stored in YAML config
+- Service runs with limited privileges
+- Logs are rotated
+- Maintenance requires root for updates
 
-## 📱 Support
+## License
 
-- Submit issues on [GitHub Issues](https://github.com/pirelike/mediaserver-autosuspend/issues)
-- Join discussions in [GitHub Discussions](https://github.com/pirelike/mediaserver-autosuspend/discussions)
-- Check [Wiki](https://github.com/pirelike/mediaserver-autosuspend/wiki) for additional documentation
+This project is licensed under the MIT License - see the LICENSE file for details.
 
----
+## Acknowledgments
 
-**Note**: Replace placeholder URLs, usernames, and paths with your actual project information.
+- Inspired by the need for efficient server power management
+- Works with Autowake for complete power management solution
+- Built for home server environments
