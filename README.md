@@ -4,11 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.7%2B-blue)
 [![GitHub Issues](https://img.shields.io/github/issues/pirelike/mediaserver-autosuspend.svg)](https://github.com/pirelike/mediaserver-autosuspend/issues)
 
-An intelligent power management system for media servers that automatically suspends your server during periods of inactivity while ensuring all services are properly monitored and managed.
-
-# AutoSuspend - Smart Server Power Management
-
-AutoSuspend is a Python-based system that monitors various services (Jellyfin, Sonarr, Radarr, Nextcloud) and automatically manages server power state. It works in conjunction with a Wake-on-LAN monitor (like [Autowake](link-to-autowake)) to create an efficient power management system for home servers.
+Mediaserver-autosuspend is a Python-based system that monitors various services (Jellyfin, Sonarr, Radarr, Nextcloud) and automatically manages server power state. It works in conjunction with a Wake-on-LAN monitor (like [Autowake](link-to-autowake)) to create an efficient power management system for home servers.
 
 ## Features
 
