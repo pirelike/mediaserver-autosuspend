@@ -4,8 +4,6 @@
 ![Python](https://img.shields.io/badge/python-3.7%2B-blue)
 [![GitHub Issues](https://img.shields.io/github/issues/pirelike/mediaserver-autosuspend.svg)](https://github.com/pirelike/mediaserver-autosuspend/issues)
 
-# MediaServer AutoSuspend
-
 ## What is this?
 
 MediaServer AutoSuspend is a power-saving system for your home server. It automatically:
