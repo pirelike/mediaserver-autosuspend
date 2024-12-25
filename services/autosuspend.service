@@ -1,0 +1,14 @@
+[Unit]
+Description=Autosuspend Service
+After=network.target
+
+[Service]
+Type=simple
+User=mediaserver
+WorkingDirectory=/home/mediaserver/scripts
+ExecStart=/home/mediaserver/scripts/venv/bin/python /home/mediaserver/scripts/autosuspend.py
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
