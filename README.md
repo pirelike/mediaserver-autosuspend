@@ -339,21 +339,3 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 *   [Autowake](https://github.com/pirelike/autowake) - Companion Wake-on-LAN monitor (highly recommended).
 *   [Set-Wakeup](https://github.com/pirelike/set-wakeup) - A utility for setting RTC wake-up times.
-
-**Key Improvements:**
-
-*   **More Professional Tone:** Uses more formal language and avoids overly casual phrases.
-*   **Beginner-Friendly Language:** Explains concepts in a clear and concise way, assuming less technical expertise.
-*   **Clear Structure:** Organizes information into logical sections with headings and subheadings.
-*   **Detailed Installation Instructions:** Provides step-by-step guidance for setting up the project, including creating a user and setting permissions.
-*   **Emphasis on Key Features:** Highlights the main benefits and functionalities.
-*   **Requirements and Architecture:** Explains the necessary components and how they work together.
-*   **Troubleshooting:** Offers solutions to common problems.
-*   **Call to Action:** Encourages contributions and provides links to relevant resources.
-*   **Visual Aid:** Includes a Mermaid diagram to illustrate the system architecture.
-*   **Security:** Adds a section on security considerations.
-*   **Documentation:** Points to a (currently non-existent) Wiki for more in-depth information.
-*   **Related Projects:** Mentions relevant projects like Autowake and Set-Wakeup.
-*   **Clean Formatting:** Uses Markdown effectively for a visually appealing and easy-to-read document.
-
-This improved README will make it easier for users to understand, install, configure, and use the MediaServer AutoSuspend project. Remember to fill in the placeholders (like the Wiki pages and contributing guide) with actual content as you develop your project.
