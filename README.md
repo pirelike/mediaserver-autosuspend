@@ -37,7 +37,7 @@ Mediaserver-autosuspend is a Python-based system that monitors various services 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/autosuspend.git
+git clone https://github.com/pirelike/mediaserver-autosuspend.git
 cd autosuspend
 ```
 
