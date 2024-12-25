@@ -328,12 +328,13 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 *   **Logging:** Comprehensive logging helps you monitor activity and troubleshoot issues.
 *   **Updates:** The daily maintenance script keeps your system up-to-date with security patches.
 
-## 📚 Documentation - Learn More
+## Future Enhancements
 
-*   [Project Wiki](https://github.com/pirelike/mediaserver-autosuspend/wiki) - In-depth information and guides.
-*   [API Reference](https://github.com/pirelike/mediaserver-autosuspend/wiki/API-Reference) - Details about the APIs used.
-*   [Configuration Guide](https://github.com/pirelike/mediaserver-autosuspend/wiki/Configuration) - A comprehensive guide to all configuration options.
-*   [Troubleshooting](https://github.com/pirelike/mediaserver-autosuspend/wiki/Troubleshooting) - Solutions to common problems.
+*   **Web Interface:** A web-based dashboard for monitoring and controlling the service.
+*   **More Granular Control:** Allow configuring different grace periods for different services.
+*   **Mobile App:** A mobile app for remote monitoring and control.
+*   **Integration with other services:** Support for more services like Plex, Emby, etc.
+*   **Asynchronous Operations:** Improve performance by using asynchronous operations for network requests.
 
 ## 🔗 Related Projects
 
