@@ -27,7 +27,7 @@ Think of it like having a smart assistant that turns off your server when no one
 Before installing, make sure you have:
 
 1. A Linux server (Ubuntu Server recommended) running:
-   - Jellyfin (or Plex/Emby)
+   - Jellyfin
    - Sonarr
    - Radarr
    - Nextcloud
