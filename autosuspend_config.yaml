@@ -1,0 +1,35 @@
+jellyfin:
+  url: "http://192.168.0.253:8096"
+  api_key: "your-jellyfin-api-key"
+  timeout: 10
+  enabled: yes # or "no", "true", "false", 1, 0
+
+radarr:
+  url: "http://localhost:7878"
+  api_key: "your-radarr-api-key"
+  enabled: yes # or "no", "true", "false", 1, 0
+
+sonarr:
+  url: "http://localhost:8989"
+  api_key: "your-sonarr-api-key"
+  enabled: yes # or "no", "true", "false", 1, 0
+
+nextcloud:
+  url: "http://192.168.0.253:9000"
+  token: "your-nextcloud-token"
+  enabled: yes # or "no", "true", "false", 1, 0
+
+raspberry_pi:
+  url: "http://192.168.0.218:5005"
+  enabled: yes # or "no", "true", "false", 1, 0
+
+system_users:
+  enabled: yes # or "no", "true", "false", 1, 0
+
+monitoring:
+  check_interval: 30
+  grace_period: 600
+
+logging:
+  file: "/home/mediaserver/scripts/autosuspend.log"
+  max_lines: 500
