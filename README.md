@@ -4,282 +4,218 @@
 ![Python](https://img.shields.io/badge/python-3.7%2B-blue)
 [![GitHub Issues](https://img.shields.io/github/issues/pirelike/mediaserver-autosuspend.svg)](https://github.com/pirelike/mediaserver-autosuspend/issues)
 
-A comprehensive power management solution for home media servers. This system automatically manages server power states based on service activity, performs scheduled maintenance, and integrates with a Wake-on-LAN monitor ([Autowake](link-to-autowake)) for complete power management.
+# MediaServer AutoSuspend
 
-## Components
+## What is this?
 
-1. **AutoSuspend Service**: Monitors server activity and manages power state
-2. **Daily Maintenance**: Handles system updates and cleanup with scheduled restarts
-3. **Integration**: Works with [Autowake](link-to-autowake) for remote wake-up
+MediaServer AutoSuspend is a power-saving system for your home server. It automatically:
+- Puts your server to sleep when it's not being used
+- Wakes it up when someone needs it
+- Keeps your server updated and maintained
 
-## Features
+Think of it like having a smart assistant that turns off your server when no one's using it and turns it back on when needed!
 
-### AutoSuspend Service
-- Monitors multiple services:
-  - Jellyfin media sessions
-  - Sonarr/Radarr download queues
-  - Nextcloud activity
-  - System user sessions
-  - External activity (via Pi monitor)
-- Configurable grace period before suspend
-- YAML configuration
-- Line-based log rotation
+## Why would I want this?
 
-### Daily Maintenance
-- Automated system updates
-- Docker cleanup
-- Log rotation
-- Scheduled restarts
-- YAML configuration
-- Progress tracking and reporting
+- **Save Power**: Your server only runs when it's actually needed
+- **Automatic Updates**: System stays updated without manual work
+- **Smart Management**: Monitors your services (Jellyfin, downloads, etc.) and only sleeps when everything is idle
+- **Convenience**: Everything is automatic - no need to manually manage your server
 
-## Prerequisites
+## What do I need?
 
-- Python 3.8 or higher
-- Linux system (tested on Ubuntu Server)
-- Systemd
-- Services to monitor:
-  - Jellyfin
-  - Sonarr
-  - Radarr
-  - Nextcloud
-- Wake-on-LAN capability
+Before installing, make sure you have:
 
-## Installation
+1. A Linux server (Ubuntu Server recommended) running:
+   - Jellyfin (or Plex/Emby)
+   - Sonarr
+   - Radarr
+   - Nextcloud
+   
+2. A Raspberry Pi (any model) on your network
+3. Basic knowledge of Linux commands
+4. Wake-on-LAN enabled on your server
 
-### 1. Create Directory Structure
+Not sure about these requirements? Check our [documentation](https://github.com/pirelike/mediaserver-autosuspend/wiki).
+
+## How does it work?
+
+The system has three main parts:
+
+1. **AutoSuspend** (runs on your server)
+   - Watches if anyone is:
+     - Watching media
+     - Downloading files
+     - Using Nextcloud
+     - Logged into the server
+   - Puts server to sleep if no activity for 10 minutes
+
+2. **Daily Maintenance** (runs on your server)
+   - Wakes up server at 1:55 AM
+   - Updates system
+   - Cleans up old files
+   - Restarts server
+
+3. **Autowake** (runs on Raspberry Pi)
+   - Watches for anyone trying to access your server
+   - Automatically wakes up server when needed
+
+## Step-by-Step Installation
+
+### 1. Prepare Your System
+
+First, make sure you have Python 3 and required tools:
 ```bash
-sudo mkdir -p /home/mediaserver/scripts
-sudo mkdir -p /home/mediaserver/scripts/venv
+# Update your system
+sudo apt update
+sudo apt upgrade
+
+# Install required packages
+sudo apt install python3 python3-venv python3-pip git
 ```
 
-### 2. Set Up Virtual Environment
+### 2. Create Directories
 ```bash
+# Create main directory
+sudo mkdir -p /home/mediaserver/scripts
+
+# Set ownership (replace 'yourusername' with your actual username)
+sudo chown -R yourusername:yourusername /home/mediaserver/scripts
+```
+
+### 3. Get the Code
+```bash
+# Clone the repository
+git clone https://github.com/pirelike/mediaserver-autosuspend.git
+cd mediaserver-autosuspend
+```
+
+### 4. Set Up Python Environment
+```bash
+# Create virtual environment
 python3 -m venv /home/mediaserver/scripts/venv
+
+# Activate it
 source /home/mediaserver/scripts/venv/bin/activate
+
+# Install requirements
 pip install -r requirements.txt
 ```
 
-### 3. Install Scripts
+### 5. Configure Your Settings
+
+Copy and edit the configuration files:
 ```bash
-sudo cp autosuspend.py /home/mediaserver/scripts/
-sudo cp daily_maintenance.py /usr/local/bin/
-sudo cp maintenance_config.yaml /home/mediaserver/scripts/
-sudo cp autosuspend_config.yaml /home/mediaserver/scripts/
+# Copy config files
+sudo cp config/autosuspend_config.yaml.example /home/mediaserver/scripts/autosuspend_config.yaml
+sudo cp config/maintenance_config.yaml.example /home/mediaserver/scripts/maintenance_config.yaml
 ```
 
-### 4. Configure AutoSuspend
-Edit `/home/mediaserver/scripts/autosuspend_config.yaml`:
-```yaml
-# API Keys and URLs
-jellyfin:
-  api_key: "your-jellyfin-api-key"
-  url: "http://localhost:8096"
-
-radarr:
-  api_key: "your-radarr-api-key"
-  url: "http://localhost:7878"
-
-sonarr:
-  api_key: "your-sonarr-api-key"
-  url: "http://localhost:8989"
-
-nextcloud:
-  url: "http://localhost:9000"
-  token: "your-nextcloud-token"
-
-raspberry_pi:
-  url: "http://your-pi-ip:5005"
-
-# Monitoring Configuration
-monitoring:
-  check_interval: 30  # seconds
-  grace_period: 600   # seconds (10 minutes)
-
-# Logging Configuration
-logging:
-  file: "/home/mediaserver/scripts/autosuspend.log"
-  max_lines: 500
-```
-
-### 5. Configure Daily Maintenance
-Edit `/home/mediaserver/scripts/maintenance_config.yaml`:
-```yaml
-# Logging Configuration
-logging:
-  file: "/home/mediaserver/scripts/daily_maintenance.log"
-  max_lines: 500
-
-# Maintenance Settings
-maintenance:
-  grace_period: 60        # Wait time after start (seconds)
-  docker_prune: true      # Whether to clean Docker
-  log_retention_days: 7   # System log retention
-  restart_delay: 5        # Seconds to wait before restart
-```
-
-### 6. Create Service Files
-
-AutoSuspend Service:
+Edit your settings:
 ```bash
-sudo nano /etc/systemd/system/autosuspend.service
+# Edit AutoSuspend settings
+sudo nano /home/mediaserver/scripts/autosuspend_config.yaml
 ```
 
-Add:
-```ini
-[Unit]
-Description=MediaServer AutoSuspend Service
-After=network.target
+You'll need to add:
+- Your Jellyfin API key (find this in Jellyfin → Dashboard → Advanced)
+- Your Sonarr API key (find this in Sonarr → Settings → General)
+- Your Radarr API key (find this in Radarr → Settings → General)
+- Your Nextcloud token
+- Your Raspberry Pi's IP address
 
-[Service]
-Type=simple
-User=mediaserver
-Group=mediaserver
-WorkingDirectory=/home/mediaserver/scripts
-Environment=PATH=/home/mediaserver/scripts/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/home/mediaserver/scripts/venv/bin/python3 /home/mediaserver/scripts/autosuspend.py
-Restart=always
-RestartSec=60
+### 6. Install Services
 
-[Install]
-WantedBy=multi-user.target
-```
-
-Daily Maintenance Service:
 ```bash
-sudo nano /etc/systemd/system/daily-maintenance.service
-```
+# Copy scripts
+sudo cp scripts/autosuspend.py /home/mediaserver/scripts/
+sudo cp scripts/daily_maintenance.py /usr/local/bin/
 
-Add:
-```ini
-[Unit]
-Description=MediaServer Daily Maintenance
-After=network.target suspend.target hibernate.target
-
-[Service]
-Type=oneshot
-Environment=PATH=/home/mediaserver/scripts/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/usr/local/bin/daily_maintenance.py
-User=root
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Maintenance Timer:
-```bash
-sudo nano /etc/systemd/system/daily-maintenance.timer
-```
-
-Add:
-```ini
-[Unit]
-Description=MediaServer Daily Maintenance Timer
-
-[Timer]
-OnCalendar=*-*-* 01:57:00
-AccuracySec=1min
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-### 7. Set Permissions
-```bash
-sudo chown -R mediaserver:mediaserver /home/mediaserver/scripts
+# Make scripts executable
 sudo chmod +x /home/mediaserver/scripts/autosuspend.py
 sudo chmod +x /usr/local/bin/daily_maintenance.py
-```
 
-### 8. Enable Services
-```bash
+# Copy service files
+sudo cp services/* /etc/systemd/system/
+
+# Enable services
 sudo systemctl daemon-reload
 sudo systemctl enable autosuspend
-sudo systemctl start autosuspend
 sudo systemctl enable daily-maintenance.timer
+sudo systemctl start autosuspend
 sudo systemctl start daily-maintenance.timer
 ```
 
-## Daily Operation
+## Checking If It's Working
 
-### Power Management Sequence
-
-1. System wakes up (via WoL or schedule) at 1:55 AM
-2. Daily maintenance runs at 1:57 AM
-   - System updates
-   - Cleanup tasks
-   - Restart
-3. Regular operation (AutoSuspend):
-   - Services checked every 30 seconds
-   - 10-minute grace period if inactive
-   - System suspends if still inactive
-4. Wake-on-LAN:
-   - [Autowake](link-to-autowake) monitors web traffic
-   - Sends WoL packet when access detected
-   - Cycle repeats
-
-### Monitoring Services
-
-Check AutoSuspend:
+### Check AutoSuspend
 ```bash
+# Check service status
 systemctl status autosuspend
+
+# View logs
 tail -f /home/mediaserver/scripts/autosuspend.log
 ```
 
-Check Maintenance:
+You should see messages about checking your services.
+
+### Check Daily Maintenance
 ```bash
+# Check when maintenance will run
 systemctl list-timers daily-maintenance.timer
-tail -f /home/mediaserver/scripts/daily_maintenance.log
 ```
 
-## Troubleshooting
+## Common Problems and Solutions
 
-### AutoSuspend Issues
-1. Check service status:
+### Server won't go to sleep?
+1. Check if anything is active:
    ```bash
-   journalctl -u autosuspend -n 50
+   tail -f /home/mediaserver/scripts/autosuspend.log
    ```
-2. Verify configuration:
-   ```bash
-   cat /home/mediaserver/scripts/autosuspend_config.yaml
-   ```
-3. Check service states in log
+2. Make sure no one is:
+   - Watching media
+   - Downloading files
+   - Using Nextcloud
+   - Logged into the server
 
-### Maintenance Issues
-1. Check timer status:
+### Server won't wake up?
+1. Check if Wake-on-LAN is enabled in your BIOS
+2. Verify your server's MAC address in the config
+3. Make sure your Raspberry Pi is running
+4. Check Raspberry Pi logs:
    ```bash
-   systemctl status daily-maintenance.timer
-   ```
-2. View maintenance logs:
-   ```bash
-   tail -f /home/mediaserver/scripts/daily_maintenance.log
-   ```
-3. Try manual run:
-   ```bash
-   sudo /usr/local/bin/daily_maintenance.py
+   tail -f /home/YOUR_PI_USER/Autowake/traffic_monitor.log
    ```
 
-## Contributing
+### Need More Help?
 
+- Check our [Wiki](https://github.com/pirelike/mediaserver-autosuspend/wiki)
+- Open an [Issue on GitHub](https://github.com/pirelike/mediaserver-autosuspend/issues)
+- See [Discussions](https://github.com/pirelike/mediaserver-autosuspend/discussions)
+
+## Want to Help?
+
+We welcome contributions! Here's how you can help:
 1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+2. Make your changes
+3. Submit a pull request
+4. Report bugs
+5. Suggest new features
 
-## Security
-
-- API keys stored in YAML config
-- Limited service privileges
-- Rotated logs
-- Root access only for maintenance
-- Safe shutdown sequences
+Check our [Contributing Guidelines](https://github.com/pirelike/mediaserver-autosuspend/blob/main/CONTRIBUTING.md) for more details.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/pirelike/mediaserver-autosuspend/blob/main/LICENSE) file for details.
+
+## Safety Notes
+
+- All passwords and API keys are stored locally on your server
+- The system runs with minimum required permissions
+- All changes are logged for debugging
+- System updates are done safely
+- No remote access required
 
 ## Related Projects
 
-- [Autowake](link-to-autowake) - Wake-on-LAN monitor for remote access
+- [Autowake](https://github.com/pirelike/autowake) - The Raspberry Pi component for waking up your server
