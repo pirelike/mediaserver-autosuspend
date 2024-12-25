@@ -4,10 +4,17 @@
 ![Python](https://img.shields.io/badge/python-3.7%2B-blue)
 [![GitHub Issues](https://img.shields.io/github/issues/pirelike/mediaserver-autosuspend.svg)](https://github.com/pirelike/mediaserver-autosuspend/issues)
 
-Mediaserver-autosuspend is a Python-based system that monitors various services (Jellyfin, Sonarr, Radarr, Nextcloud) and automatically manages server power state. It works in conjunction with a Wake-on-LAN monitor (like [Autowake](link-to-autowake)) to create an efficient power management system for home servers.
+A comprehensive power management solution for home media servers. This system automatically manages server power states based on service activity, performs scheduled maintenance, and integrates with a Wake-on-LAN monitor ([Autowake](link-to-autowake)) for complete power management.
+
+## Components
+
+1. **AutoSuspend Service**: Monitors server activity and manages power state
+2. **Daily Maintenance**: Handles system updates and cleanup with scheduled restarts
+3. **Integration**: Works with [Autowake](link-to-autowake) for remote wake-up
 
 ## Features
 
+### AutoSuspend Service
 - Monitors multiple services:
   - Jellyfin media sessions
   - Sonarr/Radarr download queues
@@ -15,11 +22,16 @@ Mediaserver-autosuspend is a Python-based system that monitors various services 
   - System user sessions
   - External activity (via Pi monitor)
 - Configurable grace period before suspend
-- Automatic system updates before suspend
-- Support for scheduled wake-ups
-- Systemd service integration
 - YAML configuration
 - Line-based log rotation
+
+### Daily Maintenance
+- Automated system updates
+- Docker cleanup
+- Log rotation
+- Scheduled restarts
+- YAML configuration
+- Progress tracking and reporting
 
 ## Prerequisites
 
@@ -35,37 +47,29 @@ Mediaserver-autosuspend is a Python-based system that monitors various services 
 
 ## Installation
 
-1. Clone the repository:
+### 1. Create Directory Structure
 ```bash
-git clone https://github.com/pirelike/mediaserver-autosuspend.git
-cd autosuspend
+sudo mkdir -p /home/mediaserver/scripts
+sudo mkdir -p /home/mediaserver/scripts/venv
 ```
 
-2. Create and activate a virtual environment:
+### 2. Set Up Virtual Environment
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-3. Install required packages:
-```bash
+python3 -m venv /home/mediaserver/scripts/venv
+source /home/mediaserver/scripts/venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Copy configuration and scripts:
+### 3. Install Scripts
 ```bash
-sudo mkdir -p /home/mediaserver/scripts
 sudo cp autosuspend.py /home/mediaserver/scripts/
+sudo cp daily_maintenance.py /usr/local/bin/
+sudo cp maintenance_config.yaml /home/mediaserver/scripts/
 sudo cp autosuspend_config.yaml /home/mediaserver/scripts/
-sudo cp daily_maintenance.sh /usr/local/bin/
 ```
 
-5. Edit the configuration file:
-```bash
-sudo nano /home/mediaserver/scripts/autosuspend_config.yaml
-```
-
-Adjust the settings:
+### 4. Configure AutoSuspend
+Edit `/home/mediaserver/scripts/autosuspend_config.yaml`:
 ```yaml
 # API Keys and URLs
 jellyfin:
@@ -98,9 +102,25 @@ logging:
   max_lines: 500
 ```
 
-6. Create the service files:
+### 5. Configure Daily Maintenance
+Edit `/home/mediaserver/scripts/maintenance_config.yaml`:
+```yaml
+# Logging Configuration
+logging:
+  file: "/home/mediaserver/scripts/daily_maintenance.log"
+  max_lines: 500
 
-Main service:
+# Maintenance Settings
+maintenance:
+  grace_period: 60        # Wait time after start (seconds)
+  docker_prune: true      # Whether to clean Docker
+  log_retention_days: 7   # System log retention
+  restart_delay: 5        # Seconds to wait before restart
+```
+
+### 6. Create Service Files
+
+AutoSuspend Service:
 ```bash
 sudo nano /etc/systemd/system/autosuspend.service
 ```
@@ -108,7 +128,7 @@ sudo nano /etc/systemd/system/autosuspend.service
 Add:
 ```ini
 [Unit]
-Description=Autosuspend Service
+Description=MediaServer AutoSuspend Service
 After=network.target
 
 [Service]
@@ -125,7 +145,28 @@ RestartSec=60
 WantedBy=multi-user.target
 ```
 
-Daily maintenance timer:
+Daily Maintenance Service:
+```bash
+sudo nano /etc/systemd/system/daily-maintenance.service
+```
+
+Add:
+```ini
+[Unit]
+Description=MediaServer Daily Maintenance
+After=network.target suspend.target hibernate.target
+
+[Service]
+Type=oneshot
+Environment=PATH=/home/mediaserver/scripts/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/local/bin/daily_maintenance.py
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Maintenance Timer:
 ```bash
 sudo nano /etc/systemd/system/daily-maintenance.timer
 ```
@@ -133,7 +174,7 @@ sudo nano /etc/systemd/system/daily-maintenance.timer
 Add:
 ```ini
 [Unit]
-Description=Run Daily System Maintenance after Wake-up
+Description=MediaServer Daily Maintenance Timer
 
 [Timer]
 OnCalendar=*-*-* 01:57:00
@@ -144,34 +185,14 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-Daily maintenance service:
-```bash
-sudo nano /etc/systemd/system/daily-maintenance.service
-```
-
-Add:
-```ini
-[Unit]
-Description=Daily System Maintenance
-After=network.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/daily_maintenance.sh
-User=root
-
-[Install]
-WantedBy=multi-user.target
-```
-
-7. Set proper permissions:
+### 7. Set Permissions
 ```bash
 sudo chown -R mediaserver:mediaserver /home/mediaserver/scripts
 sudo chmod +x /home/mediaserver/scripts/autosuspend.py
-sudo chmod +x /usr/local/bin/daily_maintenance.sh
+sudo chmod +x /usr/local/bin/daily_maintenance.py
 ```
 
-8. Enable and start services:
+### 8. Enable Services
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable autosuspend
@@ -180,81 +201,64 @@ sudo systemctl enable daily-maintenance.timer
 sudo systemctl start daily-maintenance.timer
 ```
 
-## Usage
-
-### Checking Service Status
-
-Check autosuspend service:
-```bash
-systemctl status autosuspend
-```
-
-View logs:
-```bash
-tail -f /home/mediaserver/scripts/autosuspend.log
-```
-
-Check maintenance timer:
-```bash
-systemctl list-timers daily-maintenance.timer
-```
-
-### Service States
-
-The script monitors multiple states:
-- Jellyfin: Active when streaming
-- Sonarr/Radarr: Active when downloading
-- Nextcloud: Active with high CPU usage
-- System: Active with logged-in users
-- Pi Monitor: Active with recent web traffic
+## Daily Operation
 
 ### Power Management Sequence
 
-1. System wakes up (via WoL or schedule)
-2. Services are checked every 30 seconds
-3. If all inactive, 10-minute grace period starts
-4. If still inactive after grace period, system suspends
-5. Daily maintenance runs at 1:57 AM after scheduled wake-up
+1. System wakes up (via WoL or schedule) at 1:55 AM
+2. Daily maintenance runs at 1:57 AM
+   - System updates
+   - Cleanup tasks
+   - Restart
+3. Regular operation (AutoSuspend):
+   - Services checked every 30 seconds
+   - 10-minute grace period if inactive
+   - System suspends if still inactive
+4. Wake-on-LAN:
+   - [Autowake](link-to-autowake) monitors web traffic
+   - Sends WoL packet when access detected
+   - Cycle repeats
 
-### Configuration Options
+### Monitoring Services
 
-Key options in `autosuspend_config.yaml`:
-
-```yaml
-monitoring:
-  check_interval: 30   # How often to check services
-  grace_period: 600    # Wait time before suspend
-
-logging:
-  max_lines: 500      # Log rotation line limit
+Check AutoSuspend:
+```bash
+systemctl status autosuspend
+tail -f /home/mediaserver/scripts/autosuspend.log
 ```
 
-## Daily Maintenance
-
-The daily maintenance script:
-1. Updates package lists
-2. Installs security updates
-3. Cleans package cache
-4. Performs Docker cleanup
-5. Clears old logs
-6. Restarts the system
+Check Maintenance:
+```bash
+systemctl list-timers daily-maintenance.timer
+tail -f /home/mediaserver/scripts/daily_maintenance.log
+```
 
 ## Troubleshooting
 
-1. Service won't start:
-   - Check logs: `journalctl -u autosuspend -n 50`
-   - Verify Python dependencies
-   - Check file permissions
+### AutoSuspend Issues
+1. Check service status:
+   ```bash
+   journalctl -u autosuspend -n 50
+   ```
+2. Verify configuration:
+   ```bash
+   cat /home/mediaserver/scripts/autosuspend_config.yaml
+   ```
+3. Check service states in log
 
-2. System won't suspend:
-   - Check service status in logs
-   - Verify all monitored services
-   - Check Pi monitor connection
-
-3. Maintenance issues:
-   - Check timer status
-   - Verify script permissions
-   - Check maintenance logs
+### Maintenance Issues
+1. Check timer status:
+   ```bash
+   systemctl status daily-maintenance.timer
+   ```
+2. View maintenance logs:
+   ```bash
+   tail -f /home/mediaserver/scripts/daily_maintenance.log
+   ```
+3. Try manual run:
+   ```bash
+   sudo /usr/local/bin/daily_maintenance.py
+   ```
 
 ## Contributing
 
@@ -264,19 +268,18 @@ The daily maintenance script:
 4. Push to the branch
 5. Open a Pull Request
 
-## Security Considerations
+## Security
 
 - API keys stored in YAML config
-- Service runs with limited privileges
-- Logs are rotated
-- Maintenance requires root for updates
+- Limited service privileges
+- Rotated logs
+- Root access only for maintenance
+- Safe shutdown sequences
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+## Related Projects
 
-- Inspired by the need for efficient server power management
-- Works with Autowake for complete power management solution
-- Built for home server environments
+- [Autowake](link-to-autowake) - Wake-on-LAN monitor for remote access
