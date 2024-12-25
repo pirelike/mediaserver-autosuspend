@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Maintenance Service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/daily_maintenance.py
+
+[Install]
+WantedBy=multi-user.target
