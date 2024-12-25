@@ -1,219 +1,252 @@
 # MediaServer AutoSuspend
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.7%2B-blue)
-[![GitHub Issues](https://img.shields.io/github/issues/pirelike/mediaserver-autosuspend.svg)](https://github.com/pirelike/mediaserver-autosuspend/issues)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+[![GitHub issues](https://img.shields.io/github/issues/pirelike/mediaserver-autosuspend)](https://github.com/pirelike/mediaserver-autosuspend/issues)
 
-## What is this?
+MediaServer AutoSuspend is an intelligent power management solution for home media servers. It provides automated service monitoring, power state management, and system maintenance while integrating with a Wake-on-LAN monitor for seamless remote access.
 
-MediaServer AutoSuspend is a power-saving system for your home server. It automatically:
-- Puts your server to sleep when it's not being used
-- Wakes it up when someone needs it
-- Keeps your server updated and maintained
+## 🌟 Key Features
 
-Think of it like having a smart assistant that turns off your server when no one's using it and turns it back on when needed!
+### Service Monitoring
+- Real-time monitoring of:
+  - Jellyfin media sessions
+  - Sonarr and Radarr download queues
+  - Nextcloud system activity
+  - User sessions
+  - External web traffic (via Raspberry Pi monitor)
 
-## Why would I want this?
+### Power Management
+- Configurable idle detection
+- Graceful system suspension
+- Automatic wake-up scheduling
+- Wake-on-LAN support
 
-- **Save Power**: Your server only runs when it's actually needed
-- **Automatic Updates**: System stays updated without manual work
-- **Smart Management**: Monitors your services (Jellyfin, downloads, etc.) and only sleeps when everything is idle
-- **Convenience**: Everything is automatic - no need to manually manage your server
+### System Maintenance
+- Automated system updates
+- Docker system cleanup
+- Log rotation
+- Configurable maintenance windows
+- Safe system restarts
 
-## What do I need?
+### Technical Features
+- YAML-based configuration
+- Thread-safe logging with rotation
+- Single-instance enforcement
+- Comprehensive status reporting
+- Extensible service monitoring framework
 
-Before installing, make sure you have:
+## 📋 Requirements
 
-1. A Linux server (Ubuntu Server recommended) running:
-   - Jellyfin
-   - Sonarr
-   - Radarr
-   - Nextcloud
-   
-2. A Raspberry Pi (any model) on your network
-3. Basic knowledge of Linux commands
-4. Wake-on-LAN enabled on your server
+### Server Requirements
+- Ubuntu Server 20.04+ (recommended) or other Linux distribution
+- Python 3.8 or higher
+- Systemd
+- Wake-on-LAN capable network interface
 
-Not sure about these requirements? Check our [documentation](https://github.com/pirelike/mediaserver-autosuspend/wiki).
+### Required Services
+- Jellyfin/Plex/Emby (for media streaming)
+- Sonarr (for TV show management)
+- Radarr (for movie management)
+- Nextcloud (for file hosting)
+- Docker (optional, for containerized services)
 
-## How does it work?
+### Network Requirements
+- Static IP address for server
+- Raspberry Pi running [Autowake](https://github.com/pirelike/autowake)
+- Local network that allows Wake-on-LAN packets
 
-The system has three main parts:
+## 🚀 Quick Start Installation
 
-1. **AutoSuspend** (runs on your server)
-   - Watches if anyone is:
-     - Watching media
-     - Downloading files
-     - Using Nextcloud
-     - Logged into the server
-   - Puts server to sleep if no activity for 10 minutes
+For those who want to get up and running quickly, follow these simplified installation steps. For detailed configuration options, see the [Advanced Configuration](#advanced-configuration) section.
 
-2. **Daily Maintenance** (runs on your server)
-   - Wakes up server at 1:55 AM
-   - Updates system
-   - Cleans up old files
-   - Restarts server
-
-3. **Autowake** (runs on Raspberry Pi)
-   - Watches for anyone trying to access your server
-   - Automatically wakes up server when needed
-
-## Step-by-Step Installation
-
-### 1. Prepare Your System
-
-First, make sure you have Python 3 and required tools:
+### 1. System Preparation
 ```bash
-# Update your system
-sudo apt update
-sudo apt upgrade
+# Update system
+sudo apt update && sudo apt upgrade -y
 
-# Install required packages
-sudo apt install python3 python3-venv python3-pip git
+# Install dependencies
+sudo apt install -y python3 python3-venv python3-pip git
 ```
 
-### 2. Create Directories
+### 2. Directory Setup
 ```bash
-# Create main directory
+# Create installation directory
 sudo mkdir -p /home/mediaserver/scripts
-
-# Set ownership (replace 'yourusername' with your actual username)
-sudo chown -R yourusername:yourusername /home/mediaserver/scripts
+sudo chown -R $USER:$USER /home/mediaserver/scripts
 ```
 
-### 3. Get the Code
+### 3. Installation
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/pirelike/mediaserver-autosuspend.git
 cd mediaserver-autosuspend
-```
 
-### 4. Set Up Python Environment
-```bash
 # Create virtual environment
 python3 -m venv /home/mediaserver/scripts/venv
-
-# Activate it
 source /home/mediaserver/scripts/venv/bin/activate
 
 # Install requirements
 pip install -r requirements.txt
-```
 
-### 5. Configure Your Settings
-
-Copy and edit the configuration files:
-```bash
-# Copy config files
-sudo cp config/autosuspend_config.yaml.example /home/mediaserver/scripts/autosuspend_config.yaml
-sudo cp config/maintenance_config.yaml.example /home/mediaserver/scripts/maintenance_config.yaml
-```
-
-Edit your settings:
-```bash
-# Edit AutoSuspend settings
-sudo nano /home/mediaserver/scripts/autosuspend_config.yaml
-```
-
-You'll need to add:
-- Your Jellyfin API key (find this in Jellyfin → Dashboard → Advanced)
-- Your Sonarr API key (find this in Sonarr → Settings → General)
-- Your Radarr API key (find this in Radarr → Settings → General)
-- Your Nextcloud token
-- Your Raspberry Pi's IP address
-
-### 6. Install Services
-
-```bash
-# Copy scripts
+# Copy files
 sudo cp scripts/autosuspend.py /home/mediaserver/scripts/
 sudo cp scripts/daily_maintenance.py /usr/local/bin/
+sudo cp config/*.yaml.example /home/mediaserver/scripts/
+```
 
-# Make scripts executable
-sudo chmod +x /home/mediaserver/scripts/autosuspend.py
-sudo chmod +x /usr/local/bin/daily_maintenance.py
+### 4. Basic Configuration
+```bash
+# Rename example configs
+cd /home/mediaserver/scripts
+mv autosuspend_config.yaml.example autosuspend_config.yaml
+mv maintenance_config.yaml.example maintenance_config.yaml
 
+# Edit configuration
+nano autosuspend_config.yaml
+```
+
+### 5. Service Setup
+```bash
 # Copy service files
 sudo cp services/* /etc/systemd/system/
 
+# Set permissions
+sudo chmod +x /home/mediaserver/scripts/autosuspend.py
+sudo chmod +x /usr/local/bin/daily_maintenance.py
+
 # Enable services
 sudo systemctl daemon-reload
-sudo systemctl enable autosuspend
-sudo systemctl enable daily-maintenance.timer
-sudo systemctl start autosuspend
-sudo systemctl start daily-maintenance.timer
+sudo systemctl enable autosuspend daily-maintenance.timer
+sudo systemctl start autosuspend daily-maintenance.timer
 ```
 
-## Checking If It's Working
+## 🔧 Advanced Configuration
 
-### Check AutoSuspend
+### AutoSuspend Configuration
+```yaml
+jellyfin:
+  api_key: "your-jellyfin-api-key"
+  url: "http://localhost:8096"
+  check_interval: 30
+
+monitoring:
+  grace_period: 600
+  check_interval: 30
+  required_failures: 2
+  required_successes: 2
+
+power:
+  wol_interface: "eth0"
+  suspend_command: "systemctl suspend"
+```
+
+### Maintenance Configuration
+```yaml
+maintenance:
+  grace_period: 60
+  docker_prune: true
+  log_retention_days: 7
+  restart_delay: 5
+
+updates:
+  security_only: false
+  auto_restart: true
+```
+
+## 📊 System Architecture
+
+```mermaid
+graph TD
+    A[AutoSuspend Service] -->|Monitors| B(Jellyfin)
+    A -->|Monitors| C(Sonarr/Radarr)
+    A -->|Monitors| D(Nextcloud)
+    A -->|Monitors| E(System Users)
+    A -->|Checks| F(Pi Monitor)
+    G[Daily Maintenance] -->|Updates| H(System Packages)
+    G -->|Cleans| I(Docker)
+    G -->|Rotates| J(Logs)
+```
+
+## 🔍 Monitoring and Logs
+
+### Service Status
 ```bash
-# Check service status
+# Check AutoSuspend status
 systemctl status autosuspend
 
-# View logs
-tail -f /home/mediaserver/scripts/autosuspend.log
-```
-
-You should see messages about checking your services.
-
-### Check Daily Maintenance
-```bash
-# Check when maintenance will run
+# Check maintenance timer
 systemctl list-timers daily-maintenance.timer
 ```
 
-## Common Problems and Solutions
+### Log Viewing
+```bash
+# View AutoSuspend logs
+journalctl -u autosuspend -f
 
-### Server won't go to sleep?
-1. Check if anything is active:
-   ```bash
-   tail -f /home/mediaserver/scripts/autosuspend.log
-   ```
-2. Make sure no one is:
-   - Watching media
-   - Downloading files
-   - Using Nextcloud
-   - Logged into the server
+# View maintenance logs
+tail -f /home/mediaserver/scripts/daily_maintenance.log
+```
 
-### Server won't wake up?
-1. Check if Wake-on-LAN is enabled in your BIOS
-2. Verify your server's MAC address in the config
-3. Make sure your Raspberry Pi is running
-4. Check Raspberry Pi logs:
-   ```bash
-   tail -f /home/YOUR_PI_USER/Autowake/traffic_monitor.log
-   ```
+## 🛠️ Troubleshooting
 
-### Need More Help?
+### Service Diagnostics
+```bash
+# Check system state
+systemctl status autosuspend
 
-- Check our [Wiki](https://github.com/pirelike/mediaserver-autosuspend/wiki)
-- Open an [Issue on GitHub](https://github.com/pirelike/mediaserver-autosuspend/issues)
-- See [Discussions](https://github.com/pirelike/mediaserver-autosuspend/discussions)
+# View detailed logs
+journalctl -u autosuspend -n 100 --no-pager
 
-## Want to Help?
+# Test WoL functionality
+wakeonlan -i 192.168.1.255 XX:XX:XX:XX:XX:XX
+```
 
-We welcome contributions! Here's how you can help:
-1. Fork the repository
-2. Make your changes
-3. Submit a pull request
-4. Report bugs
-5. Suggest new features
+### Common Issues
 
-Check our [Contributing Guidelines](https://github.com/pirelike/mediaserver-autosuspend/blob/main/CONTRIBUTING.md) for more details.
+1. Service Won't Start
+   - Check Python dependencies
+   - Verify configurations
+   - Check permissions
 
-## License
+2. Server Won't Sleep
+   - Check service activity
+   - Verify grace period
+   - Check logs for active sessions
+
+3. Wake-up Issues
+   - Verify BIOS settings
+   - Check network configuration
+   - Test WoL packets
+
+## 🤝 Contributing
+
+We welcome contributions! See our [Contributing Guide](https://github.com/pirelike/mediaserver-autosuspend/blob/main/CONTRIBUTING.md) for details on:
+- Code style
+- Pull request process
+- Development setup
+- Testing requirements
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/pirelike/mediaserver-autosuspend/blob/main/LICENSE) file for details.
 
-## Safety Notes
+## 🔒 Security
 
-- All passwords and API keys are stored locally on your server
-- The system runs with minimum required permissions
-- All changes are logged for debugging
-- System updates are done safely
-- No remote access required
+- Locally stored credentials
+- Minimal required permissions
+- Comprehensive logging
+- Safe update procedures
+- No remote access requirements
 
-## Related Projects
+## 📚 Documentation
 
-- [Autowake](https://github.com/pirelike/autowake) - The Raspberry Pi component for waking up your server
+- [Wiki](https://github.com/pirelike/mediaserver-autosuspend/wiki)
+- [API Reference](https://github.com/pirelike/mediaserver-autosuspend/wiki/API-Reference)
+- [Configuration Guide](https://github.com/pirelike/mediaserver-autosuspend/wiki/Configuration)
+- [Troubleshooting Guide](https://github.com/pirelike/mediaserver-autosuspend/wiki/Troubleshooting)
+
+## 🔗 Related Projects
+
+- [Autowake](https://github.com/pirelike/autowake) - Companion Wake-on-LAN monitor
+- [Set-Wakeup](https://github.com/pirelike/set-wakeup) - RTC wake-up utility
