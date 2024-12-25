@@ -45,7 +45,7 @@ MediaServer AutoSuspend is an intelligent power management solution for home med
 - Wake-on-LAN capable network interface
 
 ### Required Services
-- Jellyfin/Plex/Emby (for media streaming)
+- Jellyfin (for media streaming)
 - Sonarr (for TV show management)
 - Radarr (for movie management)
 - Nextcloud (for file hosting)
