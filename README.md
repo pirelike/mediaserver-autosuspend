@@ -332,7 +332,6 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 *   **Web Interface:** A web-based dashboard for monitoring and controlling the service.
 *   **More Granular Control:** Allow configuring different grace periods for different services.
-*   **Mobile App:** A mobile app for remote monitoring and control.
 *   **Integration with other services:** Support for more services like Plex, Emby, etc.
 *   **Asynchronous Operations:** Improve performance by using asynchronous operations for network requests.
 
