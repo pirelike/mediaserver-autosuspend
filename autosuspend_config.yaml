@@ -1,35 +1,72 @@
+# Autosuspend Configuration File
+# This configuration file controls the behavior of the autosuspend script
+
+# Media Server Services Configuration
 jellyfin:
   url: "http://192.168.0.253:8096"
   api_key: "your-jellyfin-api-key"
-  timeout: 10
-  enabled: yes # or "no", "true", "false", 1, 0
+  timeout: 10  # Timeout in seconds
+  enabled: true  # Changed from 'yes' to boolean true
+  ssl_verify: true  # Added SSL verification option
 
 radarr:
   url: "http://localhost:7878"
   api_key: "your-radarr-api-key"
-  enabled: yes # or "no", "true", "false", 1, 0
+  timeout: 10  # Added consistent timeout
+  enabled: true
+  ssl_verify: true
 
 sonarr:
   url: "http://localhost:8989"
   api_key: "your-sonarr-api-key"
-  enabled: yes # or "no", "true", "false", 1, 0
+  timeout: 10  # Added consistent timeout
+  enabled: true
+  ssl_verify: true
 
 nextcloud:
   url: "http://192.168.0.253:9000"
   token: "your-nextcloud-token"
-  enabled: yes # or "no", "true", "false", 1, 0
+  timeout: 10  # Added consistent timeout
+  enabled: true
+  ssl_verify: true
 
 raspberry_pi:
   url: "http://192.168.0.218:5005"
-  enabled: yes # or "no", "true", "false", 1, 0
+  timeout: 5  # Added shorter timeout for local network device
+  enabled: true
+  ssl_verify: false  # Local network, SSL might not be needed
 
 system_users:
-  enabled: yes # or "no", "true", "false", 1, 0
+  enabled: true
+  excluded_users: []  # Added option to exclude certain system users
 
+# Monitoring Configuration
 monitoring:
-  check_interval: 30
-  grace_period: 600
+  check_interval: 30  # Time between checks in seconds
+  grace_period: 600  # Grace period before suspend in seconds
+  grace_period_check_interval: 60  # Added interval for checks during grace period
+  max_retries: 3  # Added retry configuration
+  retry_delay: 5  # Added delay between retries
+  startup_delay: 60  # Added delay on script startup
 
+# Logging Configuration
 logging:
   file: "/home/mediaserver/scripts/autosuspend.log"
   max_lines: 500
+  level: "INFO"  # Added log level configuration
+
+# Global Settings
+ssl:
+  verify: true  # Global SSL verification setting
+  cert_path: null  # Optional: Path to custom SSL certificate
+
+network:
+  timeout: 10  # Global default timeout
+  max_retries: 3  # Global default retry count
+
+# Suspend Configuration
+suspend:
+  pre_suspend_commands: []  # Commands to run before suspending
+  post_resume_commands: []  # Commands to run after resuming
+  minimum_uptime: 300  # Minimum uptime before allowing suspend (5 minutes)
+  check_battery: false  # Set to true if running on a system with battery
