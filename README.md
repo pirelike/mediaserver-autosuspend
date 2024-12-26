@@ -445,31 +445,6 @@ We welcome contributions to improve MediaServer AutoSuspend! Please see our [Con
 *   Follow our code style guidelines.
 *   Set up your development environment.
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/pirelike/mediaserver-autosuspend/blob/main/LICENSE) file for details.
-
-## 🔒 Security - Keeping Things Safe
-
-*   **Local Storage:** API keys and other sensitive information are stored locally on your server in the `autosuspend_config.yaml` file.
-*   **Minimal Permissions:** The `autosuspend.py` script runs as a dedicated user (`mediaserver`) with limited permissions.
-*   **Logging:** Comprehensive logging helps you monitor activity and troubleshoot issues.
-*   **Updates:** The daily maintenance script keeps your system up-to-date with security patches.
-*   **Input Validation:** The configuration file is validated to prevent errors and potential security vulnerabilities.
-*   **Secure by Default:** The `check_service_health` function now defaults to verify=False to avoid potential SSL certificate issues.
-*   **API Key Protection:** Treat API keys as secrets. Do not share them or commit them to public repositories.
-*   **Regular Updates:** Keep your system and all services updated to patch vulnerabilities.
-*   **Firewall:** Configure a firewall on your media server to restrict access to only necessary ports and services.
-*   **HTTPS:** If exposing any services to the internet, use HTTPS with valid certificates (e.g., Let's Encrypt) to encrypt communication.
-*   **System Command Security:** The script uses predefined paths for system commands to reduce the risk of command injection.
-
-## 📚 Documentation - Learn More
-
-*   [Project Wiki](https://github.com/pirelike/mediaserver-autosuspend/wiki) - In-depth information and guides.
-*   [API Reference](https://github.com/pirelike/mediaserver-autosuspend/wiki/API-Reference) - Details about the APIs used.
-*   [Configuration Guide](https://github.com/pirelike/mediaserver-autosuspend/wiki/Configuration) - A comprehensive guide to all configuration options.
-*   [Troubleshooting](https://github.com/pirelike/mediaserver-autosuspend/wiki/Troubleshooting) - Solutions to common problems.
-
 ## 🔗 Related Projects
 
 *   [Autowake](https://github.com/pirelike/autowake) - Companion Wake-on-LAN monitor (highly recommended).
@@ -478,16 +453,15 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 ## 🔮 Future Enhancements
 
 *   **Web Interface:** A web-based dashboard for monitoring and controlling the service.
-*   **More Granular Control:** Allow configuring different grace periods for different services.
-*   **Mobile App:** A mobile app for remote monitoring and control.
-*   **Integration with other services:** Support for more services like Emby, etc.
 *   **Asynchronous Operations:** Improve performance by using asynchronous operations for network requests.
 *   **Dynamic Wake-up Times:**  Instead of a fixed time, use a more dynamic approach to setting the wake-up timer based on usage patterns or external triggers.
 * **Service Auto-Detection:** Implement a mechanism to automatically detect and configure installed services.
-* **Docker Support:** If running services in Docker containers, add features to monitor and control them directly.
 * **Alerting:** Integrate with notification services (e.g., Pushover, Telegram, etc.) to send alerts when errors occur or when the system is suspended/resumed.
-* **Enhanced Security:** Implement more robust authentication and authorization mechanisms if a web interface or API is added.
 
 ## 🙏 Acknowledgments
 *   Thanks to all the contributors who have helped improve this project.
 *   The developers of the services that this project integrates with.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/pirelike/mediaserver-autosuspend/blob/main/LICENSE) file for details.
