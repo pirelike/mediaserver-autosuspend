@@ -240,12 +240,84 @@ logging:
   max_lines: 500                                    # Maximum log file size (lines)
 ```
 
-### Obtaining a Plex Token
-1. Open your Plex Media Server in a web browser.
-2. Navigate to any media item's details page.
-3. Right-click on the page and select "View Page Source" or "Inspect" (depending on your browser).
-4. Search for "X-Plex-Token" in the source code.
-5. The value next to "X-Plex-Token" is your Plex token.
+# Guide to Obtaining API Keys for MediaServer AutoSuspend
+
+This guide will walk you through the process of obtaining API keys for each service supported by MediaServer AutoSuspend.
+
+### Jellyfin API Key
+1. Log in to your Jellyfin web interface as an administrator
+2. Go to Dashboard (Admin panel)
+3. Navigate to Advanced → API Keys
+4. Click "New API Key"
+5. Enter a name for the key (e.g., "AutoSuspend")
+6. Click "OK" to generate the key
+7. Copy the generated API key
+
+### Sonarr API Key
+1. Log in to your Sonarr web interface
+2. Go to Settings → General
+3. Look for the "API Key" section
+4. The API key will be displayed there (or click "Show" if it's hidden)
+5. Copy the API key
+
+### Radarr API Key
+1. Log in to your Radarr web interface
+2. Go to Settings → General
+3. Look for the "API Key" section
+4. The API key will be displayed there (or click "Show" if it's hidden)
+5. Copy the API key
+
+### Nextcloud Token
+1. Log in to your Nextcloud web interface
+2. Click on your profile picture in the top right
+3. Go to Settings → Security
+4. Scroll down to "App passwords" or "Security tokens"
+5. Enter a name for the token (e.g., "AutoSuspend")
+6. Click "Create new app password"
+7. Copy the generated token
+
+## Plex Token
+Method 1 (Using Web Interface):
+1. Log in to Plex Web App (app.plex.tv)
+2. Play any media file
+3. Right-click on the playing content
+4. Select "Get Info" or "View XML"
+5. In the URL that opens, look for "X-Plex-Token=" parameter
+6. Copy the string after "X-Plex-Token="
+
+Method 2 (Using Account Page):
+1. Log in to plex.tv
+2. Go to Settings → Account
+3. Under "Account Settings," find "Authorized Devices"
+4. Click on the device name for your server
+5. The token will be visible in the URL (after "token=")
+
+### Emby API Key
+1. Log in to your Emby web interface as an administrator
+2. Go to Dashboard
+3. Navigate to Advanced → API Keys
+4. Click "New API Key"
+5. Enter a name for the key (e.g., "AutoSuspend")
+6. Select appropriate access levels (full access recommended for AutoSuspend)
+7. Click "OK" to generate the key
+8. Copy the generated API key
+
+### Security Considerations
+- Keep your API keys secure and never share them
+- Use separate API keys for different applications when possible
+- Regularly rotate API keys if the service supports it
+- Store API keys in the config file with appropriate file permissions (600 or 640)
+- Back up your API keys securely
+- If you suspect an API key has been compromised, regenerate it immediately
+
+### Troubleshooting
+If you get "Unauthorized" errors:
+1. Verify you've copied the entire API key
+2. Check if the API key has the necessary permissions
+3. Ensure the service is running and accessible
+4. Verify the URL in your config points to the correct server address
+5. Check if the service requires additional authentication headers
+
 
 ### Maintenance Configuration (`maintenance_config.yaml`)
 
