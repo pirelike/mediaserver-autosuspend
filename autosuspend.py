@@ -17,6 +17,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 import signal
 import jsonschema
+import atexit
 
 # Constants
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -1223,11 +1224,11 @@ def check_single_instance() -> Optional[int]:
                 print("Failed to acquire lock. Exiting.")
                 sys.exit(1)
 
-
-def setup_signal_handlers(logger: logging.Logger, lock_fd: Optional[int]) -> None:
+def setup_signal_handlers(config: Config, logger: logging.Logger, lock_fd: Optional[int]) -> None:
     """Sets up signal handlers for graceful shutdown.
     
     Args:
+        config (Config): The configuration object.
         logger (logging.Logger): The logger object.
         lock_fd (Optional[int]): File descriptor of the lock file.
     """
@@ -1266,6 +1267,43 @@ def setup_signal_handlers(logger: logging.Logger, lock_fd: Optional[int]) -> Non
     # Ensure cleanup runs on normal exit
     atexit.register(cleanup_and_exit)
 
+def setup_logging(config: Config) -> logging.Logger:
+    """Sets up logging configuration.
+    
+    Args:
+        config (Config): The configuration object containing logging settings.
+        
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    logger = logging.getLogger('autosuspend')
+    
+    # Set the logging level from config
+    log_level = getattr(logging, config.config['logging'].get('level', 'INFO').upper())
+    logger.setLevel(log_level)
+    
+    # Create formatters and handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s',
+        datefmt=DATE_FORMAT
+    )
+    
+    # Create and configure the rotating file handler
+    file_handler = LineBasedRotatingHandler(
+        filename=config.config['logging']['file'],
+        max_lines=config.config['logging']['max_lines']
+    )
+    file_handler.setFormatter(formatter)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    
+    # Add handlers to logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
 
 def main() -> None:
     """Main function to monitor system activity and manage suspension."""
@@ -1277,7 +1315,7 @@ def main() -> None:
     logger = setup_logging(config)
     
     # Setup signal handlers
-    setup_signal_handlers(logger, lock_fd)
+    setup_signal_handlers(config, logger, lock_fd)
 
     logger.info("Starting system monitoring...")
 
