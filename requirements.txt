@@ -1,5 +1,15 @@
 # Core dependencies
 PyYAML==6.0.1          # YAML configuration file handling
 requests==2.31.0       # HTTP requests for API communication
+jsonschema==4.20.0     # JSON schema validation for config files
 
-# These versions are known to work well together and are security-patched
+# Async dependencies
+asyncio==3.4.3         # Asynchronous programming
+aiofiles==23.2.1       # Async file operations
+aioshutil==1.5.0       # Async shutil operations
+
+# Security dependencies
+defusedxml==0.7.1      # For safer XML parsing (Plex)
+
+# Typing (for Python versions < 3.9)
+typing-extensions==4.9.0 # Backport of typing module features for older Python versions
